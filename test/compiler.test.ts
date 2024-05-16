@@ -87,7 +87,7 @@ describe("Compiler", () => {
 
     const compiler = new Compiler();
     compiler.compile(astNodes);
-    expect(compiler.cNodeList.length).toBe(6);
+    expect(compiler.cNodeList.length).toBe(7);
     expect(compiler.errors.length).toBe(0);
   });
 });
