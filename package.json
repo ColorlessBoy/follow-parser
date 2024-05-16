@@ -11,7 +11,9 @@
   "main": "./dist/vite-vanilla-library.cjs",
   "module": "./dist/vite-vanilla-library.js",
   "types": "./dist/vite-vanilla-library.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -26,6 +28,7 @@
     "@antfu/eslint-config": "^2.17.0",
     "@commitlint/cli": "^19.3.0",
     "@commitlint/config-conventional": "^19.2.2",
+    "@types/charcodes": "^0.2.2",
     "@types/node": "^20.12.11",
     "@vitest/coverage-v8": "^1.6.0",
     "camelcase": "^8.0.0",
@@ -40,5 +43,8 @@
   },
   "lint-staged": {
     "*.ts": "pnpm run lint"
+  },
+  "dependencies": {
+    "charcodes": "^0.2.0"
   }
 }
