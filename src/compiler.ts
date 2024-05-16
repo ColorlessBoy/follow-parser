@@ -25,10 +25,11 @@ export class Compiler {
   public cNodeList: CNode[] = [];
   public cNodeMap: Map<string, CNode> = new Map();
   public errors: Error[] = [];
-  public compile(astNode: ASTNode[]) {
+  public compile(astNode: ASTNode[]): CNode[] {
     for (const node of astNode) {
       this.compile0(node);
     }
+    return this.cNodeList;
   }
   private compile0(node: ASTNode) {
     switch (node.nodetype) {
@@ -48,7 +49,7 @@ export class Compiler {
   }
   private compileTypeBlock(node: TypeASTNode) {
     for (const type of node.types) {
-      if (!this.checkNameDup(type)) {
+      if (this.checkNameDup(type)) {
         const nodetype: CNodeTypes.TYPE = CNodeTypes.TYPE;
         const cnode: TypeCNode = {
           cnodetype: nodetype,
@@ -76,14 +77,16 @@ export class Compiler {
     const content: (string | number)[] = [];
     for (const token of node.content) {
       const index = argIndexMap.get(token.content);
-      if (index) {
+      if (index !== undefined) {
         content.push(index);
       } else {
-        const last = content.at(-1);
-        if (last && typeof last === "string") {
-          content[-1] = last + token.content;
-        } else {
+        const last = content.pop();
+        if (last === undefined) {
           content.push(token.content);
+        } else if (typeof last === "string") {
+          content.push(last + token.content);
+        } else {
+          content.push(last, token.content);
         }
       }
     }
@@ -132,6 +135,7 @@ export class Compiler {
       astNode: node,
       targets: targets,
       assumptions: assumptions,
+      diffs: node.diffs.map((e) => e.map((e) => e.content)),
     };
     this.cNodeList.push(axiomCNode);
     this.cNodeMap.set(axiomCNode.astNode.name.content, axiomCNode);
@@ -185,6 +189,7 @@ export class Compiler {
       astNode: node,
       assumptions: assumptions,
       targets: targets,
+      diffs: node.diffs.map((e) => e.map((e) => e.content)),
       proofs: proofs,
     };
     this.cNodeList.push(thmCNode);
@@ -248,6 +253,7 @@ export class Compiler {
     const assumptions = definition2.assumptions.map((e) =>
       this.replaceTermOpCNode(e, argMap)
     );
+    const diffs = this.replaceDiffs(definition2.diffs, argMap);
 
     const proofOpCNode: ProofOpCNode = {
       root: root,
@@ -256,8 +262,42 @@ export class Compiler {
       definition: definition2,
       targets: targets,
       assumptions: assumptions,
+      diffs: diffs,
     };
     return proofOpCNode;
+  }
+  private replaceDiffs(
+    diffs: string[][],
+    argMap: Map<string, TermOpCNode>
+  ): Set<string>[][] {
+    const argVars: Map<string, Set<string>> = new Map();
+    argMap.forEach((value, key) => {
+      argVars.set(key, this.getLeavesOfTermOpCNode(value));
+    });
+    const rst: Set<string>[][] = [];
+    for (const diffgroup of diffs) {
+      const tmp: Set<string>[] = [];
+      for (const v of diffgroup) {
+        const s = argVars.get(v);
+        if (s) {
+          tmp.push(s);
+        } else {
+          tmp.push(new Set(v));
+        }
+      }
+      rst.push(tmp);
+    }
+    return rst;
+  }
+  private getLeavesOfTermOpCNode(term: TermOpCNode): Set<string> {
+    if (term.children.length === 0) {
+      return new Set([term.content]);
+    }
+    const rst: string[] = [];
+    for (const child of term.children) {
+      rst.push(...this.getLeavesOfTermOpCNode(child));
+    }
+    return new Set(rst);
   }
   private replaceTermOpCNode(
     cNode: TermOpCNode,
@@ -292,7 +332,7 @@ export class Compiler {
     const root = opNode.root;
     // arg
     const argDef = argDefMap.get(root.content);
-    if (argDef) {
+    if (argDef !== undefined) {
       if (opNode.children.length > 0) {
         this.errors.push({
           type: ErrorTypes.TooManyArg,
@@ -366,7 +406,7 @@ export class Compiler {
       if (typeof word === "string") {
         s += word;
       } else {
-        s += children[i].content;
+        s += children[word].content;
       }
     }
     return s;
@@ -407,9 +447,9 @@ export class Compiler {
   private checkParams(params: ParamPair[]): boolean {
     const paramSet: Set<string> = new Set();
     for (const param of params) {
-      if (this.checkTypeDef(param.type)) {
+      if (!this.checkTypeDef(param.type)) {
         return false;
-      } else if (this.checkNameDup(param.name)) {
+      } else if (!this.checkNameDup(param.name)) {
         return false;
       } else if (paramSet.has(param.name.content)) {
         this.errors.push({
@@ -418,6 +458,7 @@ export class Compiler {
         });
         return false;
       }
+      paramSet.add(param.name.content);
     }
     return true;
   }
