@@ -223,7 +223,7 @@ export enum ErrorTypes {
   DiffNotWord,
   TargetMissing,
   ProofEqMissing,
-  ProofEmpty,
+  // ProofEmpty, empty proof 继续进入compile阶段，被当成axiom
   // compile error
   DupDefType,
   TypeDefMissing,
@@ -237,6 +237,8 @@ export enum ErrorTypes {
   TooLessArg,
   ArgTypeError,
   AxiomThmDefMissing,
+  ProofDiffError,
+  ProofOpUseless,
 }
 
 export interface Error {
@@ -284,6 +286,8 @@ export interface ThmCNode extends CNode {
   diffArray: string[][];
   diffMap: Map<string, Set<string>>;
   proofs: ProofOpCNode[];
+  proofProcess: TermOpCNode[][];
+  isValid: Boolean;
 }
 
 export interface TermOpCNode {
@@ -292,7 +296,8 @@ export interface TermOpCNode {
   range: Range;
   definition: TermCNode | ParamPair;
   type: string;
-  content: string;
+  termContent: string;
+  funContent: string;
 }
 
 export interface ProofOpCNode {

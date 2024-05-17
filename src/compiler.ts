@@ -202,27 +202,98 @@ export class Compiler {
     }
 
     const proofs: ProofOpCNode[] = [];
+    const diffMap = this.getDiffMap(node.diffs);
     for (const opNode of node.proof) {
-      const proofOpCnNode = this.compileProofOpNode(opNode, argDefMap);
-      if (proofOpCnNode) {
-        proofs.push(proofOpCnNode);
-      } else {
-        // parse proof error
-        return;
+      const proofOpCNode = this.compileProofOpNode(opNode, argDefMap);
+      if (proofOpCNode) {
+        proofs.push(proofOpCNode);
+        // check diff
+        for(const item of proofOpCNode.diffs) {
+          const bodyDiff = diffMap.get(item[0]);
+          if(bodyDiff === undefined) {
+            this.errors.push({
+              type: ErrorTypes.ProofDiffError,
+              token: proofOpCNode.root
+            })
+            break;
+          }
+          for(const v of item[1]) {
+            if(!bodyDiff.has(v)) {
+              this.errors.push({
+                type: ErrorTypes.ProofDiffError,
+                token: proofOpCNode.root
+              })
+              break;
+            }
+          }
+        }
       }
     }
-
+    const proofProcess = this.getProofProcess(targets, proofs);
     const thmCNode: ThmCNode = {
       cnodetype: CNodeTypes.THM,
       astNode: node,
       assumptions: assumptions,
       targets: targets,
       diffArray: node.diffs.map((e) => e.map((e) => e.content)),
-      diffMap: this.getDiffMap(node.diffs),
+      diffMap: diffMap,
       proofs: proofs,
+      proofProcess: proofProcess,
+      isValid: this.checkProofValidation(assumptions, proofProcess.at(-1)),
     };
     this.cNodeList.push(thmCNode);
     this.cNodeMap.set(node.name.content, thmCNode);
+  }
+  private checkProofValidation(conditions: TermOpCNode[], targets: TermOpCNode[] | undefined): Boolean {
+    if(targets === undefined) {
+      return false;
+    }
+    const conditionSet = new Set(conditions.map(e => e.funContent));
+    for(const target of targets) {
+      if(!conditionSet.has(target.funContent)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  private getProofProcess(targets: TermOpCNode[], proofs: ProofOpCNode[]): TermOpCNode[][] {
+    const rst: TermOpCNode[][] = [];
+    let currentTarget = [...targets];
+    for(const proof of proofs) {
+      const nextTarget = this.getNextProof0(currentTarget, proof);
+      if(nextTarget === undefined) {
+        this.errors.push({
+          type: ErrorTypes.ProofOpUseless,
+          token: proof.root
+        })
+        rst.push(currentTarget);
+      } else  {
+        rst.push(nextTarget);
+        currentTarget = nextTarget;
+      }
+    }
+    return rst;
+  }
+  private getNextProof0(targets: TermOpCNode[], proof: ProofOpCNode): TermOpCNode[] | undefined {
+    const proofTargetSet = new Set(proof.targets.map(e => e.funContent));
+    const nextTargets: TermOpCNode[] = [];
+    let proofSomething = false;
+    for(const target of targets) {
+      if(proofTargetSet.has(target.funContent)) {
+        proofSomething = true;
+      } else {
+        nextTargets.push(target);
+      }
+    }
+    if(!proofSomething) {
+      return undefined;
+    }
+    if(proofSomething) {
+      for(const assumption of proof.assumptions) {
+        nextTargets.push(assumption);
+      }
+    }
+    return nextTargets;
   }
   private compileProofOpNode(
     opNode: OpAstNode,
@@ -358,8 +429,8 @@ export class Compiler {
     blockArgSet: Set<string>
   ): Set<string> {
     if (term.children.length === 0) {
-      if (blockArgSet.has(term.content)) {
-        return new Set([term.content]);
+      if (blockArgSet.has(term.termContent)) {
+        return new Set([term.termContent]);
       } else {
         return new Set([]);
       }
@@ -392,7 +463,8 @@ export class Compiler {
       range: cNode.range,
       definition: definition2,
       type: cNode.type,
-      content: this.getTermContent(definition2, children),
+      termContent: this.getTermContent(definition2, children),
+      funContent: this.getFunContent(definition2, children),
     };
     return opCNode;
   }
@@ -417,7 +489,8 @@ export class Compiler {
         range: opNode.range,
         definition: argDef,
         type: argDef.type.content,
-        content: argDef.name.content,
+        termContent: argDef.name.content,
+        funContent: argDef.name.content,
       };
       return opCNode;
     }
@@ -466,21 +539,30 @@ export class Compiler {
       range: opNode.range,
       definition: definition2,
       type: definition2.astNode.type.content,
-      content: this.getTermContent(definition2, children as TermOpCNode[]),
+      termContent: this.getTermContent(definition2, children as TermOpCNode[]),
+      funContent: this.getFunContent(definition2, children as TermOpCNode[]),
     };
     return opCNode;
   }
-  private getTermContent(term: TermCNode, children: TermOpCNode[]) {
+  private getTermContent(term: TermCNode, children: TermOpCNode[]): string {
     let s: string = "";
     for (let i = 0; i < term.content.length; i++) {
       const word = term.content[i];
       if (typeof word === "string") {
         s += word;
       } else {
-        s += children[word].content;
+        s += children[word].termContent;
       }
     }
     return s;
+  }
+  private getFunContent(term: TermCNode, children: TermOpCNode[]): string {
+    let s: string = term.astNode.name.content;
+    if(children.length > 0) {
+      s += '(' + children.map(c => c.funContent).join(',') + ')'
+    }
+    return s;
+
   }
   private checkTypeDef(token: Token): boolean {
     const defToken = this.cNodeMap.get(token.content);

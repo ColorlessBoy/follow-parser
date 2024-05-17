@@ -116,6 +116,7 @@ export class Parser {
         type: ErrorTypes.TargetMissing,
         token: name,
       });
+      return;
     }
 
     const eqNode = tokens.at(i);
@@ -151,12 +152,7 @@ export class Parser {
     rightBrace = tokens.at(i);
 
     const proof = this.parseOpNode(proofTokens);
-    if (proof.length === 0) {
-      this.errors.push({
-        type: ErrorTypes.ProofEmpty,
-        token: name,
-      });
-    }
+    // empty proof 继续进入compile阶段，被当成axiom
 
     // range
     let end: Position = proof.at(-1)?.range.end || keyword.range.end;

@@ -61,20 +61,21 @@ describe("Compiler", () => {
       TERM Prop imp(Prop p0, Prop p1) { (p0 -> p1) }
       TERM Prop forall(Set s0, Prop p0) { (∀ s0, p0) }
       AXIOM ax-mp(Prop p0, Prop p1) {
-        -| p0
-        |- imp(p0, p1)
+        |- p0
+        -| p1
+        -| imp(p1, p0)
       }
       AXIOM ax-5(Set s0, Prop p0) {
-        #diff s0 p0
         |- imp(p0, forall(s0, p0))
+        #diff s0 p0
       }
       THM thm1(Set s1, Prop p1, Prop p2) {
+        |- forall(s1, imp(p1, p2))
+        -| imp(p1, p2)
         #diff s1 p1
         #diff s1 p2
-        -| imp(p1, p2)
-        |- forall(s1, imp(p1, p2))
       } = {
-        ax-mp(imp(p1, p2), forall(s1, imp(p1, p2)))
+        ax-mp(forall(s1, imp(p1, p2)), imp(p1, p2))
         ax-5(s1, imp(p1, p2))
       }
     `;
