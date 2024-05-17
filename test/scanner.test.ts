@@ -19,14 +19,14 @@ function compareToken(token: Token, expectToken: ExpectToken): boolean {
 describe("Scanner", () => {
   it("should return desire tokens", () => {
     const text: string = `
-    TYPE Prop Set
-    TERM Prop imp(Prop p0, Prop p1) { (p0 -> p1) }
-    TERM Prop forall(Set s0, Prop p0) { (∀ s0, p0) }
+    type Prop Set
+    term Prop imp(Prop p0, Prop p1) { (p0 -> p1) }
+    term Prop forall(Set s0, Prop p0) { (∀ s0, p0) }
 /*
 * This is block comment.
 */
-    AXIOM ax-5(Set s0, Prop p0) {
-      #diff s0 p0 // line comment
+    axiom ax-5(Set s0, Prop p0) {
+      diff s0 p0 // line comment
       |- imp(p0, forall(s0, p0))
     }
   `;
@@ -37,11 +37,11 @@ describe("Scanner", () => {
     });
 
     const expectTokens: ExpectToken[] = [
-      { type: TokenTypes.KEY, content: "TYPE" },
+      { type: TokenTypes.KEY, content: "type" },
       { type: TokenTypes.WORD, content: "Prop" },
       { type: TokenTypes.WORD, content: "Set" },
 
-      { type: TokenTypes.KEY, content: "TERM" },
+      { type: TokenTypes.KEY, content: "term" },
       { type: TokenTypes.WORD, content: "Prop" },
       { type: TokenTypes.WORD, content: "imp" },
       { type: TokenTypes.SEP, content: "(" },
@@ -59,7 +59,7 @@ describe("Scanner", () => {
       { type: TokenTypes.SEP, content: ")" },
       { type: TokenTypes.SEP, content: "}" },
 
-      { type: TokenTypes.KEY, content: "TERM" },
+      { type: TokenTypes.KEY, content: "term" },
       { type: TokenTypes.WORD, content: "Prop" },
       { type: TokenTypes.WORD, content: "forall" },
       { type: TokenTypes.SEP, content: "(" },
@@ -80,7 +80,7 @@ describe("Scanner", () => {
 
       { type: TokenTypes.COMMENT, content: "/*\n* This is block comment.\n*/"},
 
-      { type: TokenTypes.KEY, content: "AXIOM" },
+      { type: TokenTypes.KEY, content: "axiom" },
       { type: TokenTypes.WORD, content: "ax-5" },
       { type: TokenTypes.SEP, content: "(" },
       { type: TokenTypes.WORD, content: "Set" },
@@ -91,7 +91,7 @@ describe("Scanner", () => {
       { type: TokenTypes.SEP, content: ")" },
 
       { type: TokenTypes.SEP, content: "{" },
-      { type: TokenTypes.KEY, content: "#diff" },
+      { type: TokenTypes.KEY, content: "diff" },
       { type: TokenTypes.WORD, content: "s0" },
       { type: TokenTypes.WORD, content: "p0" },
 

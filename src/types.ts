@@ -29,13 +29,13 @@ export interface Range {
 }
 
 export enum Keywords {
-  TYPE = "TYPE",
-  TERM = "TERM",
-  AXIOM = "AXIOM",
-  THM = "THM",
+  TYPE = "type",
+  TERM = "term",
+  AXIOM = "axiom",
+  THM = "thm",
   TARGET = "|-",
   ASSUME = "-|",
-  DIFF = "#diff",
+  DIFF = "diff",
 }
 
 export enum TokenTypes {
@@ -64,11 +64,11 @@ export function astnodeToString(node: Node): string {
   switch (node.nodetype) {
     case NodeTypes.TYPE:
       const typeNode = node as TypeASTNode;
-      return "TYPE " + typeNode.types.map((e) => e.content).join(" ");
+      return "type " + typeNode.types.map((e) => e.content).join(" ");
     case NodeTypes.TERM:
       const termNode = node as TermASTNode;
       let s1 =
-        "TERM " +
+        "term " +
         termNode.type.content +
         " " +
         termNode.name.content +
@@ -84,7 +84,7 @@ export function astnodeToString(node: Node): string {
     case NodeTypes.AXIOM:
       const axiomNode = node as AxiomASTNode;
       let s2 =
-        "AXIOM " +
+        "axiom " +
         axiomNode.name.content +
         "(" +
         axiomNode.params
@@ -96,7 +96,7 @@ export function astnodeToString(node: Node): string {
         s2 +=
           "\n" +
           axiomNode.diffs
-            .map((e) => "  #diff " + e.map((t) => t.content).join(" "))
+            .map((e) => "  diff " + e.map((t) => t.content).join(" "))
             .join("\n");
       }
       if (axiomNode.assumptions.length > 0) {
@@ -116,7 +116,7 @@ export function astnodeToString(node: Node): string {
     case NodeTypes.THM:
       const thmNode = node as ThmASTNode;
       let s3 =
-        "THM " +
+        "thm " +
         thmNode.name.content +
         "(" +
         thmNode.params
@@ -128,7 +128,7 @@ export function astnodeToString(node: Node): string {
         s3 +=
           "\n" +
           thmNode.diffs
-            .map((e) => "  #diff " + e.map((t) => t.content).join(" "))
+            .map((e) => "  diff " + e.map((t) => t.content).join(" "))
             .join("\n");
       }
       if (thmNode.assumptions.length > 0) {

@@ -3,7 +3,7 @@ import { Parser, Scanner, Compiler } from "../src";
 
 describe("Compiler", () => {
   it("#1 Type Block", () => {
-    const text = "TYPE Prop ZFSet Class";
+    const text = "type Prop ZFSet Class";
 
     const scanner = new Scanner();
     const tokens = scanner.scan(text);
