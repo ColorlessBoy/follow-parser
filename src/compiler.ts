@@ -135,10 +135,38 @@ export class Compiler {
       astNode: node,
       targets: targets,
       assumptions: assumptions,
-      diffs: node.diffs.map((e) => e.map((e) => e.content)),
+      diffArray: node.diffs.map((e) => e.map((e) => e.content)),
+      diffMap: this.getDiffMap(node.diffs),
     };
     this.cNodeList.push(axiomCNode);
     this.cNodeMap.set(axiomCNode.astNode.name.content, axiomCNode);
+  }
+  private getDiffMap(diffs: Token[][]): Map<string, Set<string>> {
+    const rstMap: Map<string, Set<string>> = new Map();
+    for (const diffarray of diffs) {
+      for (let i = 0; i < diffarray.length - 1; i++) {
+        const si = diffarray[i].content;
+        for (let j = i + 1; j < diffarray.length; j++) {
+          const sj = diffarray[j].content;
+          if (si <= sj) {
+            let tmpSet = rstMap.get(si);
+            if (tmpSet === undefined) {
+              tmpSet = new Set();
+              rstMap.set(si, tmpSet);
+            }
+            tmpSet.add(sj);
+          } else {
+            let tmpSet = rstMap.get(sj);
+            if (tmpSet === undefined) {
+              tmpSet = new Set();
+              rstMap.set(sj, tmpSet);
+            }
+            tmpSet.add(si);
+          }
+        }
+      }
+    }
+    return rstMap;
   }
   private compileThmBlock(node: ThmASTNode) {
     if (!this.checkNameDup(node.name)) {
@@ -189,7 +217,8 @@ export class Compiler {
       astNode: node,
       assumptions: assumptions,
       targets: targets,
-      diffs: node.diffs.map((e) => e.map((e) => e.content)),
+      diffArray: node.diffs.map((e) => e.map((e) => e.content)),
+      diffMap: this.getDiffMap(node.diffs),
       proofs: proofs,
     };
     this.cNodeList.push(thmCNode);
@@ -197,7 +226,7 @@ export class Compiler {
   }
   private compileProofOpNode(
     opNode: OpAstNode,
-    argDefMap: Map<string, ParamPair>
+    blockArgDefMap: Map<string, ParamPair>
   ): ProofOpCNode | undefined {
     const root = opNode.root;
     const definition = this.cNodeMap.get(root.content);
@@ -230,7 +259,7 @@ export class Compiler {
     }
 
     const children: (TermOpCNode | undefined)[] = opNode.children.map((c) =>
-      this.compileTermOpNode(c, argDefMap)
+      this.compileTermOpNode(c, blockArgDefMap)
     );
     const argMap: Map<string, TermOpCNode> = new Map();
     for (let idx = 0; idx < children.length; idx++) {
@@ -253,7 +282,9 @@ export class Compiler {
     const assumptions = definition2.assumptions.map((e) =>
       this.replaceTermOpCNode(e, argMap)
     );
-    const diffs = this.replaceDiffs(definition2.diffs, argMap);
+    const blockArgSet: Set<string> = new Set();
+    blockArgDefMap.forEach((pair) => blockArgSet.add(pair.name.content));
+    const diffs = this.replaceDiffs(definition2.diffArray, argMap, blockArgSet);
 
     const proofOpCNode: ProofOpCNode = {
       root: root,
@@ -268,11 +299,18 @@ export class Compiler {
   }
   private replaceDiffs(
     diffs: string[][],
-    argMap: Map<string, TermOpCNode>
-  ): Set<string>[][] {
+    argMap: Map<string, TermOpCNode>,
+    blockArgSet: Set<string>
+  ): Map<string, Set<string>> {
+    if (diffs.length === 0) {
+      return new Map();
+    }
     const argVars: Map<string, Set<string>> = new Map();
     argMap.forEach((value, key) => {
-      argVars.set(key, this.getLeavesOfTermOpCNode(value));
+      const tmp = this.getLeavesOfTermOpCNode(value, blockArgSet);
+      if (tmp.size > 0) {
+        argVars.set(key, tmp);
+      }
     });
     const rst: Set<string>[][] = [];
     for (const diffgroup of diffs) {
@@ -281,21 +319,54 @@ export class Compiler {
         const s = argVars.get(v);
         if (s) {
           tmp.push(s);
-        } else {
-          tmp.push(new Set(v));
         }
       }
       rst.push(tmp);
     }
-    return rst;
+    const rstMap: Map<string, Set<string>> = new Map();
+    for (const diffArray of rst) {
+      for (let i = 0; i < diffArray.length - 1; i++) {
+        const seti = diffArray[i];
+        for (let j = 1; j < diffArray.length; j++) {
+          const setj = diffArray[j];
+          for (const si of seti) {
+            for (const sj of setj) {
+              if (si <= sj) {
+                let tmpSet = rstMap.get(si);
+                if (tmpSet === undefined) {
+                  tmpSet = new Set();
+                  rstMap.set(si, tmpSet);
+                }
+                tmpSet.add(sj);
+              } else {
+                let tmpSet = rstMap.get(sj);
+                if (tmpSet === undefined) {
+                  tmpSet = new Set();
+                  rstMap.set(sj, tmpSet);
+                }
+                tmpSet.add(si);
+              }
+            }
+          }
+        }
+      }
+    }
+    return rstMap;
   }
-  private getLeavesOfTermOpCNode(term: TermOpCNode): Set<string> {
+  private getLeavesOfTermOpCNode(
+    term: TermOpCNode,
+    blockArgSet: Set<string>
+  ): Set<string> {
     if (term.children.length === 0) {
-      return new Set([term.content]);
+      if (blockArgSet.has(term.content)) {
+        return new Set([term.content]);
+      } else {
+        return new Set([]);
+      }
     }
     const rst: string[] = [];
     for (const child of term.children) {
-      rst.push(...this.getLeavesOfTermOpCNode(child));
+      rst.push(...this.getLeavesOfTermOpCNode(child, blockArgSet));
     }
     return new Set(rst);
   }

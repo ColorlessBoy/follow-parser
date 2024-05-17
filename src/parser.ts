@@ -109,7 +109,8 @@ export class Parser {
         token: leftBrace,
       });
     }
-    const { targets, assumptions, diffs } = this.parseBody(content);
+    const paramSet: Set<string> = new Set(params.map(p => p.name.content));
+    const { targets, assumptions, diffs } = this.parseBody(content, paramSet);
     if (targets.length === 0) {
       this.errors.push({
         type: ErrorTypes.TargetMissing,
@@ -261,7 +262,8 @@ export class Parser {
         token: leftBrace,
       });
     }
-    const { targets, assumptions, diffs } = this.parseBody(content);
+    const paramSet: Set<string> = new Set(params.map(p => p.name.content));
+    const { targets, assumptions, diffs } = this.parseBody(content, paramSet);
     if (targets.length === 0) {
       this.errors.push({
         type: ErrorTypes.TargetMissing,
@@ -309,7 +311,7 @@ export class Parser {
     };
     this.astNodes.push(astNode);
   }
-  private parseBody(content: Token[]) {
+  private parseBody(content: Token[], paramSet: Set<string>) {
     const statements = [];
     for (const token of content) {
       if (
@@ -363,6 +365,12 @@ export class Parser {
           } else if (s.has(word.content)) {
             this.errors.push({
               type: ErrorTypes.DupDiff,
+              token: word,
+            });
+          } else if(!paramSet.has(word.content)) {
+            // arg 的名字本来就不允许和 term 的名字一样，所以只需要限制 arg 之间就好了。
+            this.errors.push({
+              type: ErrorTypes.DiffIsNotArg,
               token: word,
             });
           } else {
@@ -465,33 +473,33 @@ export class Parser {
       });
       return;
     }
-    // parse params
+    // parse params.
+    // Params is alternative in term block.
     const leftBrace = tokens.at(3);
-    if (leftBrace === undefined || leftBrace.content !== "(") {
-      this.errors.push({
-        type: ErrorTypes.LeftParenMissing,
-        token: leftBrace || name,
-      });
-      return;
-    }
-    let i = 4;
-    for (; i < tokens.length; i++) {
-      if (tokens[i].content === ")") {
-        break;
+    let rightBrace = leftBrace;
+    let params: ParamPair[] = [];
+    let i = 3;
+    if (leftBrace && leftBrace.content === '(') {
+      i += 1;
+      for (; i < tokens.length; i++) {
+        if (tokens[i].content === ")") {
+          break;
+        }
       }
+      if (i === tokens.length) {
+        this.errors.push({
+          type: ErrorTypes.RightParenMissing,
+          token: leftBrace,
+        });
+        return;
+      }
+      rightBrace = tokens.at(i);
+      params = this.parseParams(tokens.slice(4, i));
+      i += 1;
     }
-    if (i === tokens.length) {
-      this.errors.push({
-        type: ErrorTypes.RightParenMissing,
-        token: leftBrace,
-      });
-      return;
-    }
-    const rightBrace = tokens.at(i);
-    const params = this.parseParams(tokens.slice(4, i));
-    i += 1;
     // content. The bridge between follow language and nature language.
-    let content: Token[] = [];
+    // content is alternative in term block, too.
+    let content: Token[] = [name]; // default content is its name.
     if (i < tokens.length) {
       if (tokens[i].content !== "{") {
         this.errors.push({

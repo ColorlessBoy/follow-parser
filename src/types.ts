@@ -231,6 +231,7 @@ export enum ErrorTypes {
   DupName,
   DupArgName,
   DiffIsKeyword,
+  DiffIsNotArg,
   TermDefMissing,
   TooManyArg,
   TooLessArg,
@@ -271,7 +272,8 @@ export interface AxiomCNode extends CNode {
   astNode: AxiomASTNode;
   targets: TermOpCNode[];
   assumptions: TermOpCNode[];
-  diffs: string[][];
+  diffArray: string[][];
+  diffMap: Map<string, Set<string>>;
 }
 
 export interface ThmCNode extends CNode {
@@ -279,7 +281,8 @@ export interface ThmCNode extends CNode {
   astNode: ThmASTNode;
   targets: TermOpCNode[];
   assumptions: TermOpCNode[];
-  diffs: string[][];
+  diffArray: string[][];
+  diffMap: Map<string, Set<string>>;
   proofs: ProofOpCNode[];
 }
 
@@ -299,5 +302,5 @@ export interface ProofOpCNode {
   definition: CNode;
   targets: TermOpCNode[];
   assumptions: TermOpCNode[];
-  diffs: Set<string>[][];
+  diffs: Map<string, Set<string>>;
 }
