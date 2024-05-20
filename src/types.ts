@@ -29,13 +29,13 @@ export interface Range {
 }
 
 export enum Keywords {
-  TYPE = "type",
-  TERM = "term",
-  AXIOM = "axiom",
-  THM = "thm",
-  TARGET = "|-",
-  ASSUME = "-|",
-  DIFF = "diff",
+  TYPE = 'type',
+  TERM = 'term',
+  AXIOM = 'axiom',
+  THM = 'thm',
+  TARGET = '|-',
+  ASSUME = '-|',
+  DIFF = 'diff',
 }
 
 export enum TokenTypes {
@@ -64,99 +64,65 @@ export function astnodeToString(node: Node): string {
   switch (node.nodetype) {
     case NodeTypes.TYPE:
       const typeNode = node as TypeASTNode;
-      return "type " + typeNode.types.map((e) => e.content).join(" ");
+      return 'type ' + typeNode.types.map((e) => e.content).join(' ');
     case NodeTypes.TERM:
       const termNode = node as TermASTNode;
       let s1 =
-        "term " +
+        'term ' +
         termNode.type.content +
-        " " +
+        ' ' +
         termNode.name.content +
-        "(" +
-        termNode.params
-          .map((e) => e.type.content + " " + e.name.content)
-          .join(", ") +
-        ")";
+        '(' +
+        termNode.params.map((e) => e.type.content + ' ' + e.name.content).join(', ') +
+        ')';
       if (termNode.content.length > 0) {
-        s1 += " {" + termNode.content.map((e) => e.content).join(" ") + "}";
+        s1 += ' {' + termNode.content.map((e) => e.content).join(' ') + '}';
       }
       return s1;
     case NodeTypes.AXIOM:
       const axiomNode = node as AxiomASTNode;
       let s2 =
-        "axiom " +
+        'axiom ' +
         axiomNode.name.content +
-        "(" +
-        axiomNode.params
-          .map((e) => e.type.content + " " + e.name.content)
-          .join(", ") +
-        ")" +
-        "{";
+        '(' +
+        axiomNode.params.map((e) => e.type.content + ' ' + e.name.content).join(', ') +
+        ')' +
+        '{';
       if (axiomNode.diffs.length > 0) {
-        s2 +=
-          "\n" +
-          axiomNode.diffs
-            .map((e) => "  diff " + e.map((t) => t.content).join(" "))
-            .join("\n");
+        s2 += '\n' + axiomNode.diffs.map((e) => '  diff ' + e.map((t) => t.content).join(' ')).join('\n');
       }
       if (axiomNode.assumptions.length > 0) {
-        s2 +=
-          "\n" +
-          axiomNode.assumptions
-            .map((e) => "  -| " + opAstNodeToString(e))
-            .join("\n");
+        s2 += '\n' + axiomNode.assumptions.map((e) => '  -| ' + opAstNodeToString(e)).join('\n');
       }
-      s2 +=
-        "\n" +
-        axiomNode.targets
-          .map((e) => "  |- " + opAstNodeToString(e))
-          .join("\n") +
-        "\n}";
+      s2 += '\n' + axiomNode.targets.map((e) => '  |- ' + opAstNodeToString(e)).join('\n') + '\n}';
       return s2;
     case NodeTypes.THM:
       const thmNode = node as ThmASTNode;
       let s3 =
-        "thm " +
+        'thm ' +
         thmNode.name.content +
-        "(" +
-        thmNode.params
-          .map((e) => e.type.content + " " + e.name.content)
-          .join(", ") +
-        ")" +
-        "{";
+        '(' +
+        thmNode.params.map((e) => e.type.content + ' ' + e.name.content).join(', ') +
+        ')' +
+        '{';
       if (thmNode.diffs.length > 0) {
-        s3 +=
-          "\n" +
-          thmNode.diffs
-            .map((e) => "  diff " + e.map((t) => t.content).join(" "))
-            .join("\n");
+        s3 += '\n' + thmNode.diffs.map((e) => '  diff ' + e.map((t) => t.content).join(' ')).join('\n');
       }
       if (thmNode.assumptions.length > 0) {
-        s3 +=
-          "\n" +
-          thmNode.assumptions
-            .map((e) => "  -| " + opAstNodeToString(e))
-            .join("\n");
+        s3 += '\n' + thmNode.assumptions.map((e) => '  -| ' + opAstNodeToString(e)).join('\n');
       }
-      s3 +=
-        "\n" +
-        thmNode.targets.map((e) => "  |- " + opAstNodeToString(e)).join("\n") +
-        "\n}" +
-        " = {\n";
-      s3 +=
-        thmNode.proof.map((e) => "  " + opAstNodeToString(e)).join("\n") +
-        "\n}";
+      s3 += '\n' + thmNode.targets.map((e) => '  |- ' + opAstNodeToString(e)).join('\n') + '\n}' + ' = {\n';
+      s3 += thmNode.proof.map((e) => '  ' + opAstNodeToString(e)).join('\n') + '\n}';
       return s3;
     default:
-      return "";
+      return '';
   }
 }
 
 function opAstNodeToString(opNode: OpAstNode) {
   let s = opNode.root.content;
   if (opNode.children.length > 0) {
-    s +=
-      "(" + opNode.children.map((e) => opAstNodeToString(e)).join(", ") + ")";
+    s += '(' + opNode.children.map((e) => opAstNodeToString(e)).join(', ') + ')';
   }
   return s;
 }
@@ -239,6 +205,7 @@ export enum ErrorTypes {
   AxiomThmDefMissing,
   ProofDiffError,
   ProofOpUseless,
+  ThmWithoutValidProof,
 }
 
 export interface Error {
@@ -254,12 +221,14 @@ export enum CNodeTypes {
 }
 export interface CNode {
   cnodetype: CNodeTypes;
+  astNode: Node;
 }
 
 export type CompilerNode = TypeCNode | TermCNode | AxiomCNode | ThmCNode;
 
 export interface TypeCNode extends CNode {
   cnodetype: CNodeTypes.TYPE;
+  astNode: TypeASTNode;
   type: Token;
 }
 
@@ -288,6 +257,7 @@ export interface ThmCNode extends CNode {
   proofs: ProofOpCNode[];
   proofProcess: TermOpCNode[][];
   isValid: Boolean;
+  suggestions: Map<string, TermOpCNode>[][];
 }
 
 export interface TermOpCNode {
@@ -298,6 +268,7 @@ export interface TermOpCNode {
   type: string;
   termContent: string;
   funContent: string;
+  virtual?: boolean;
 }
 
 export interface ProofOpCNode {
