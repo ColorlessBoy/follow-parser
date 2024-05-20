@@ -124,7 +124,42 @@ describe("Compiler", () => {
     const compiler = new Compiler();
     compiler.compile(astNodes);
     expect(compiler.cNodeList.length).toBe(7);
-    expect(compiler.errors.length).toBe(0);
+    expect(compiler.errors.length).toBe(3);
     expect((compiler.cNodeList[6] as ThmCNode).suggestions.length).toBe(1);
+    expect((compiler.cNodeList[6] as ThmCNode).suggestions[0].length).toBe(1);
+  });
+  it("#6 Proof Block Suggestion", () => {
+    const text = `
+type prop
+term prop imp(prop p1, prop p2) {(p1 -> p2)}
+axiom ax-2(prop p1, prop p2, prop p3) {
+  |- imp(imp(p1, imp(p2, p3)), imp(imp(p1, p2), imp(p1, p3)))
+}
+axiom ax-mp(prop p1, prop p2) {
+  -| p2
+  -| imp(p2, p1)
+  |- p1
+}
+thm a2i(prop p1, prop p2, prop p3) {
+  |- imp(imp(p1, p2), imp(p1, p3))
+  -| imp(p1, imp(p2, p3))
+} = {
+  ax-mp(imp(imp(p1,p2),imp(p1,p3)), imp(p1, imp(p2, p3)))
+  ax-2
+}
+    `;
+
+    const scanner = new Scanner();
+    const tokens = scanner.scan(text);
+
+    const parser = new Parser();
+    const astNodes = parser.parse(tokens);
+
+    const compiler = new Compiler();
+    compiler.compile(astNodes);
+    expect(compiler.cNodeList.length).toBe(5);
+    expect(compiler.errors.length).toBe(1);
+    expect((compiler.cNodeList[4] as ThmCNode).suggestions.length).toBe(2);
+    expect((compiler.cNodeList[4] as ThmCNode).suggestions[1].length).toBe(1);
   });
 });

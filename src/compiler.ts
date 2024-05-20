@@ -283,10 +283,23 @@ export class Compiler {
       } else {
         processes.push(nextTarget);
         currentTarget = nextTarget;
-        suggestions.push([]);
+        if(proof.useVirtual) {
+          suggestions.push([this.getSuggestion2(proof)]);
+        } else {
+          suggestions.push([]);
+        }
       }
     }
     return { processes, suggestions };
+  }
+  private getSuggestion2(proof: ProofOpCNode): Map<string, TermOpCNode> {
+    const suggestions: Map<string, TermOpCNode> = new Map();
+    for(const child of proof.children) {
+      if(child.virtual === true) {
+        suggestions.set(child.root.content, child);
+      }
+    }
+    return suggestions;
   }
   private getSuggestions(targets: TermOpCNode[], proof: ProofOpCNode): Map<string, TermOpCNode>[] {
     const suggestions: Map<string, TermOpCNode>[] = [];
@@ -380,6 +393,7 @@ export class Compiler {
 
     const children: (TermOpCNode | undefined)[] = opNode.children.map((c) => this.compileTermOpNode(c, blockArgDefMap));
     const argMap: Map<string, TermOpCNode> = new Map();
+    let useVirtual = false;
     for (let idx = 0; idx < wantArgs.length; idx++) {
       const opCNode = children.at(idx);
       const wantArg = wantArgs[idx];
@@ -401,6 +415,7 @@ export class Compiler {
           virtual: true,
         };
         argMap.set(wantArg.name.content, virtualArg);
+        useVirtual = true;
         if (children.length > idx) {
           children[idx] = virtualArg;
         } else {
@@ -425,6 +440,7 @@ export class Compiler {
       targets: targets,
       assumptions: assumptions,
       diffs: diffs,
+      useVirtual: useVirtual,
     };
     return proofOpCNode;
   }
