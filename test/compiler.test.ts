@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Parser, Scanner, Compiler, ThmASTNode, ThmCNode } from "../src";
+import { Parser, Scanner, Compiler, ThmASTNode, ThmCNode, CompilerWithImport } from "../src";
 
 describe("Compiler", () => {
   it("#1 Type Block", () => {
@@ -161,5 +161,46 @@ thm a2i(prop p1, prop p2, prop p3) {
     expect(compiler.errors.length).toBe(1);
     expect((compiler.cNodeList[4] as ThmCNode).suggestions.length).toBe(2);
     expect((compiler.cNodeList[4] as ThmCNode).suggestions[1].length).toBe(1);
+  });
+  it("#7 Compiler with Import", () => {
+    const text1 = `
+type prop
+term prop imp(prop p1, prop p2) {(p1 -> p2)}
+axiom ax-2(prop p1, prop p2, prop p3) {
+  |- imp(imp(p1, imp(p2, p3)), imp(imp(p1, p2), imp(p1, p3)))
+}
+axiom ax-mp(prop p1, prop p2) {
+  -| p2
+  -| imp(p2, p1)
+  |- p1
+}
+    `;
+    const text2 = `
+thm a2i(prop p1, prop p2, prop p3) {
+  |- imp(imp(p1, p2), imp(p1, p3))
+  -| imp(p1, imp(p2, p3))
+} = {
+  ax-mp(imp(imp(p1,p2),imp(p1,p3)), imp(p1, imp(p2, p3)))
+  ax-2
+}
+    `;
+    const compiler = new CompilerWithImport();
+    compiler.setImportList(['text1', 'text2'])
+
+    const scanner = new Scanner();
+    const parser = new Parser();
+
+    const tokens1 = scanner.scan(text1);
+    const astNodes1 = parser.parse(tokens1);
+    compiler.compile('text1', astNodes1);
+
+    const tokens2 = scanner.scan(text2);
+    const astNodes2 = parser.parse(tokens2);
+    compiler.compile('text2', astNodes2);
+
+    expect(compiler.currentCNodeList.length).toBe(1);
+    expect(compiler.errors.length).toBe(1);
+    expect((compiler.currentCNodeList[0] as ThmCNode).suggestions.length).toBe(2);
+    expect((compiler.currentCNodeList[0] as ThmCNode).suggestions[1].length).toBe(1);
   });
 });
