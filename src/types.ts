@@ -280,4 +280,5 @@ export interface ProofOpCNode {
   assumptions: TermOpCNode[];
   diffs: Map<string, Set<string>>;
   useVirtual: boolean;
+  diffError?: string[];
 }

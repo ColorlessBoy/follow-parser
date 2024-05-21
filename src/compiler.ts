@@ -212,6 +212,7 @@ export class Compiler {
       if (proofOpCNode) {
         proofs.push(proofOpCNode);
         // check diff
+        const diffError: string[] = [];
         for (const item of proofOpCNode.diffs) {
           const bodyDiff = diffMap.get(item[0]);
           if (bodyDiff === undefined) {
@@ -219,6 +220,9 @@ export class Compiler {
               type: ErrorTypes.ProofDiffError,
               token: proofOpCNode.root,
             });
+            for (const v of item[1]) {
+              diffError.push(item[0], ',', v);
+            }
             break;
           }
           for (const v of item[1]) {
@@ -227,12 +231,15 @@ export class Compiler {
                 type: ErrorTypes.ProofDiffError,
                 token: proofOpCNode.root,
               });
+              diffError.push(item[0], ',', v);
               break;
             }
           }
         }
+        proofOpCNode.diffError = diffError;
       }
     }
+
     const { processes, suggestions } = this.getProofProcess(targets, proofs);
     const thmCNode: ThmCNode = {
       cnodetype: CNodeTypes.THM,
@@ -283,7 +290,7 @@ export class Compiler {
       } else {
         processes.push(nextTarget);
         currentTarget = nextTarget;
-        if(proof.useVirtual) {
+        if (proof.useVirtual) {
           suggestions.push([this.getSuggestion2(proof)]);
         } else {
           suggestions.push([]);
@@ -294,8 +301,8 @@ export class Compiler {
   }
   private getSuggestion2(proof: ProofOpCNode): Map<string, TermOpCNode> {
     const suggestions: Map<string, TermOpCNode> = new Map();
-    for(const child of proof.children) {
-      if(child.virtual === true) {
+    for (const child of proof.children) {
+      if (child.virtual === true) {
         suggestions.set(child.root.content, child);
       }
     }
@@ -452,16 +459,16 @@ export class Compiler {
     if (diffs.length === 0) {
       return new Map();
     }
-    const argVars: Map<string, Set<string>> = new Map();
+    const argVars: Map<string, Map<string, TermOpCNode>> = new Map();
     argMap.forEach((value, key) => {
-      const tmp = this.getLeavesOfTermOpCNode(value, blockArgSet);
+      const tmp = this.getLeavesOfTermOpCNode(value);
       if (tmp.size > 0) {
         argVars.set(key, tmp);
       }
     });
-    const rst: Set<string>[][] = [];
+    const rst: Map<string, TermOpCNode>[][] = [];
     for (const diffgroup of diffs) {
-      const tmp: Set<string>[] = [];
+      const tmp: Map<string, TermOpCNode>[] = [];
       for (const v of diffgroup) {
         const s = argVars.get(v);
         if (s) {
@@ -473,16 +480,47 @@ export class Compiler {
     const rstMap: Map<string, Set<string>> = new Map();
     for (const diffArray of rst) {
       for (let i = 0; i < diffArray.length - 1; i++) {
-        const seti = diffArray[i];
+        const mapi = diffArray[i];
         for (let j = 1; j < diffArray.length; j++) {
-          const setj = diffArray[j];
-          for (const si of seti) {
-            for (const sj of setj) {
+          const mapj = diffArray[j];
+          for (const mi of mapi) {
+            for (const mj of mapj) {
+              const miIsArg = blockArgSet.has(mi[0]);
+              const mjIsArg = blockArgSet.has(mj[0]);
+              if (!miIsArg && !mjIsArg) {
+                if (mi[1].root.content === mj[1].root.content) {
+                  this.errors.push({
+                    type: ErrorTypes.ProofDiffError,
+                    token: mi[1].root,
+                  });
+                  this.errors.push({
+                    type: ErrorTypes.ProofDiffError,
+                    token: mj[1].root,
+                  });
+                }
+              }
+              if (!miIsArg || !mjIsArg) {
+                // diff is verified
+                // arg can't have save name with term
+                continue;
+              }
+              const si = mi[1].root.content;
+              const sj = mj[1].root.content;
+              if (si === sj) {
+                this.errors.push({
+                  type: ErrorTypes.ProofDiffError,
+                  token: mi[1].root,
+                });
+                this.errors.push({
+                  type: ErrorTypes.ProofDiffError,
+                  token: mj[1].root,
+                });
+              }
               if (si <= sj) {
                 let tmpSet = rstMap.get(si);
                 if (tmpSet === undefined) {
                   tmpSet = new Set();
-                  rstMap.set(si, tmpSet);
+                  rstMap.set(sj, tmpSet);
                 }
                 tmpSet.add(sj);
               } else {
@@ -500,19 +538,16 @@ export class Compiler {
     }
     return rstMap;
   }
-  private getLeavesOfTermOpCNode(term: TermOpCNode, blockArgSet: Set<string>): Set<string> {
+  private getLeavesOfTermOpCNode(term: TermOpCNode): Map<string, TermOpCNode> {
     if (term.children.length === 0) {
-      if (blockArgSet.has(term.termContent)) {
-        return new Set([term.termContent]);
-      } else {
-        return new Set([]);
-      }
+      return new Map([[term.root.content, term]]);
     }
-    const rst: string[] = [];
+    const rst: Map<string, TermOpCNode> = new Map();
     for (const child of term.children) {
-      rst.push(...this.getLeavesOfTermOpCNode(child, blockArgSet));
+      const childMap = this.getLeavesOfTermOpCNode(child);
+      childMap.forEach((value, key) => rst.set(key, value));
     }
-    return new Set(rst);
+    return rst;
   }
   private replaceTermOpCNode(cNode: TermOpCNode, argMap: Map<string, TermOpCNode>): TermOpCNode {
     const root = cNode.root;
