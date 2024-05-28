@@ -1,3 +1,5 @@
+import { Parser } from './parser';
+import { Scanner } from './scanner';
 import {
   ASTNode,
   AxiomASTNode,
@@ -26,7 +28,17 @@ export class Compiler {
   public cNodeList: CNode[] = [];
   public cNodeMap: Map<string, CNode> = new Map();
   public errors: Error[] = [];
-  public compile(astNode: ASTNode[]): CNode[] {
+  public tokens: Token[] = [];
+  public compileCode(code: string): CNode[] {
+    const scanner = new Scanner();
+    const parser = new Parser();
+    this.tokens = scanner.scan(code);
+    const astNodes = parser.parse(this.tokens);
+    const cNodes = this.compile(astNodes);
+    this.errors = [...parser.errors, ...this.errors];
+    return cNodes
+  }
+  private compile(astNode: ASTNode[]): CNode[] {
     this.cNodeList = [];
     this.cNodeMap = new Map();
     this.errors = [];

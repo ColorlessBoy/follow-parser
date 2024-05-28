@@ -4,15 +4,8 @@ import { Parser, Scanner, Compiler, ThmASTNode, ThmCNode, CompilerWithImport } f
 describe("Compiler", () => {
   it("#1 Type Block", () => {
     const text = "type Prop ZFSet Class";
-
-    const scanner = new Scanner();
-    const tokens = scanner.scan(text);
-
-    const parser = new Parser();
-    const astNodes = parser.parse(tokens);
-
     const compiler = new Compiler();
-    compiler.compile(astNodes);
+    compiler.compileCode(text);
     expect(compiler.cNodeList.length).toBe(3);
     expect(compiler.errors.length).toBe(0);
   });
@@ -21,15 +14,8 @@ describe("Compiler", () => {
       type Prop
       term Prop imply(Prop p1, Prop p2) {(p1 -> p2)}
     `;
-
-    const scanner = new Scanner();
-    const tokens = scanner.scan(text);
-
-    const parser = new Parser();
-    const astNodes = parser.parse(tokens);
-
     const compiler = new Compiler();
-    compiler.compile(astNodes);
+    compiler.compileCode(text);
     expect(compiler.cNodeList.length).toBe(2);
     expect(compiler.errors.length).toBe(0);
   });
@@ -43,15 +29,8 @@ describe("Compiler", () => {
         |- imp(p0, forall(s0, p0))
       }
     `;
-
-    const scanner = new Scanner();
-    const tokens = scanner.scan(text);
-
-    const parser = new Parser();
-    const astNodes = parser.parse(tokens);
-
     const compiler = new Compiler();
-    compiler.compile(astNodes);
+    compiler.compileCode(text);
     expect(compiler.cNodeList.length).toBe(5);
     expect(compiler.errors.length).toBe(0);
   });
@@ -79,15 +58,8 @@ describe("Compiler", () => {
         ax-5(s1, imp(p1, p2))
       }
     `;
-
-    const scanner = new Scanner();
-    const tokens = scanner.scan(text);
-
-    const parser = new Parser();
-    const astNodes = parser.parse(tokens);
-
     const compiler = new Compiler();
-    compiler.compile(astNodes);
+    compiler.compileCode(text);
     expect(compiler.cNodeList.length).toBe(7);
     expect(compiler.errors.length).toBe(0);
   });
@@ -115,14 +87,8 @@ describe("Compiler", () => {
       }
     `;
 
-    const scanner = new Scanner();
-    const tokens = scanner.scan(text);
-
-    const parser = new Parser();
-    const astNodes = parser.parse(tokens);
-
     const compiler = new Compiler();
-    compiler.compile(astNodes);
+    compiler.compileCode(text);
     expect(compiler.cNodeList.length).toBe(7);
     expect(compiler.errors.length).toBe(3);
     expect((compiler.cNodeList[6] as ThmCNode).suggestions.length).toBe(1);
@@ -148,15 +114,8 @@ thm a2i(prop p1, prop p2, prop p3) {
   ax-2
 }
     `;
-
-    const scanner = new Scanner();
-    const tokens = scanner.scan(text);
-
-    const parser = new Parser();
-    const astNodes = parser.parse(tokens);
-
     const compiler = new Compiler();
-    compiler.compile(astNodes);
+    compiler.compileCode(text);
     expect(compiler.cNodeList.length).toBe(5);
     expect(compiler.errors.length).toBe(1);
     expect((compiler.cNodeList[4] as ThmCNode).suggestions.length).toBe(2);
@@ -190,13 +149,8 @@ thm a2i(prop p1, prop p2, prop p3) {
     const scanner = new Scanner();
     const parser = new Parser();
 
-    const tokens1 = scanner.scan(text1);
-    const astNodes1 = parser.parse(tokens1);
-    compiler.compile('text1', astNodes1);
-
-    const tokens2 = scanner.scan(text2);
-    const astNodes2 = parser.parse(tokens2);
-    compiler.compile('text2', astNodes2);
+    compiler.compileCode('text1', text1);
+    compiler.compileCode('text2', text2);
 
     expect(compiler.currentCNodeList.length).toBe(1);
     expect(compiler.errors.length).toBe(1);
