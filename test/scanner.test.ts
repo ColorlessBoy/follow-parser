@@ -31,12 +31,9 @@ describe("Scanner", () => {
     }
   `;
     const scanner = new Scanner();
-    const tokens = scanner.scan(text);
-    tokens.forEach((t) => {
-      console.log(t.toString());
-    });
+    let tokens = scanner.scan(text);
 
-    tokens.filter(token => token.type !== TokenTypes.IGNORE);
+    tokens = tokens.filter(token => token.type !== TokenTypes.IGNORE);
 
     const expectTokens: ExpectToken[] = [
       { type: TokenTypes.KEY, content: "type" },

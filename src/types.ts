@@ -290,3 +290,5 @@ export interface ProofOpCNode {
   useVirtual: boolean;
   diffError?: string[];
 }
+
+export const CONTENT_FILE = 'content.follow.json';
