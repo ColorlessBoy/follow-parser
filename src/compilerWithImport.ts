@@ -634,6 +634,7 @@ export class CompilerWithImport {
     // arg
     const argDef = argDefMap.get(root.content);
     if (argDef !== undefined) {
+      root.type = TokenTypes.ARGNAME;
       if (opNode.children.length > 0) {
         this.errors.push({
           type: ErrorTypes.TooManyArg,
