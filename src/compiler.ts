@@ -29,14 +29,18 @@ export class Compiler {
   public cNodeMap: Map<string, CNode> = new Map();
   public errors: Error[] = [];
   public tokens: Token[] = [];
-  public compileCode(code: string): CNode[] {
+  public compileCode(code: string) {
     const scanner = new Scanner();
     const parser = new Parser();
     this.tokens = scanner.scan(code);
     const astNodes = parser.parse(this.tokens);
     const cNodes = this.compile(astNodes);
     this.errors = [...parser.errors, ...this.errors];
-    return cNodes
+    return {
+      cNodes: cNodes,
+      errors: this.errors,
+      tokens: this.tokens,
+    };
   }
   private compile(astNode: ASTNode[]): CNode[] {
     this.cNodeList = [];
