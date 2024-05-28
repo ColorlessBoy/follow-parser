@@ -56,6 +56,7 @@ export class Parser {
       });
       return;
     }
+    name.type = TokenTypes.THMNAME;
     // parse params
     const leftBrace = tokens.at(2);
     if (leftBrace === undefined || leftBrace.content !== '(') {
@@ -195,6 +196,7 @@ export class Parser {
       });
       return;
     }
+    name.type = TokenTypes.AXIOMNAME;
     // parse params
     const leftBrace = tokens.at(2);
     if (leftBrace === undefined || leftBrace.content !== '(') {
@@ -343,6 +345,7 @@ export class Parser {
           } else {
             tmp.push(word);
             s.add(word.content);
+            word.type = TokenTypes.ARGNAME;
           }
         }
         if (tmp.length === 0) {
@@ -400,6 +403,11 @@ export class Parser {
             children: children,
             range: range,
           };
+          if(children.length === 0) {
+            root.type = TokenTypes.CONSTNAME;
+          } else {
+            root.type = TokenTypes.TERMNAME;
+          }
           stack.push(node);
         }
       }
@@ -428,6 +436,8 @@ export class Parser {
       });
       return;
     }
+    type.type = TokenTypes.TYPENAME;
+
     const name = tokens.at(2);
     // name missing
     if (name === undefined || name.type !== TokenTypes.WORD) {
@@ -437,6 +447,8 @@ export class Parser {
       });
       return;
     }
+    name.type = TokenTypes.TERMNAME;
+
     // parse params.
     // Params is alternative in term block.
     const leftBrace = tokens.at(3);
@@ -514,6 +526,8 @@ export class Parser {
         continue;
       }
 
+      tokens[i].type = TokenTypes.TYPENAME;
+
       if (i + 1 === tokens.length || tokens[i + 1].type !== TokenTypes.WORD) {
         this.errors.push({
           type: ErrorTypes.ParamNameMissing,
@@ -522,6 +536,7 @@ export class Parser {
         i += 2;
         continue;
       }
+      tokens[i+1].type = TokenTypes.ARGNAME;
       params.push({
         type: tokens[i],
         name: tokens[i + 1],
@@ -549,6 +564,7 @@ export class Parser {
       if (tokens[i].type !== TokenTypes.WORD) {
         this.unknownTokens.push(tokens[i]);
       } else {
+        tokens[i].type = TokenTypes.TYPENAME;
         types.push(tokens[i]);
       }
     }
@@ -572,7 +588,9 @@ export class Parser {
     const tokenBlocks: Token[][] = [];
     for (let i = 0; i < tokens.length; i++) {
       const token = tokens[i];
-      if (token.type === TokenTypes.COMMENT) {
+      if(token.type === TokenTypes.IGNORE) {
+        continue;
+      } else if (token.type === TokenTypes.COMMENT) {
         this.commentTokens.push(token);
       } else if (isStartKeyToken(token)) {
         tokenBlocks.push([token]);

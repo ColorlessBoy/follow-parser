@@ -36,6 +36,8 @@ describe("Scanner", () => {
       console.log(t.toString());
     });
 
+    tokens.filter(token => token.type !== TokenTypes.IGNORE);
+
     const expectTokens: ExpectToken[] = [
       { type: TokenTypes.KEY, content: "type" },
       { type: TokenTypes.WORD, content: "Prop" },

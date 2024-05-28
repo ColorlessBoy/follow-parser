@@ -19,6 +19,7 @@ import {
   TypeCNode,
   ProofOpCNode,
   ThmCNode,
+  TokenTypes,
 } from './types';
 
 export class Compiler {
@@ -82,6 +83,7 @@ export class Compiler {
     for (const token of node.content) {
       const index = argIndexMap.get(token.content);
       if (index !== undefined) {
+        token.type = TokenTypes.ARGNAME;
         content.push(index);
       } else {
         const last = content.pop();
@@ -397,6 +399,11 @@ export class Compiler {
         });
       }
     }
+    if(definition2.cnodetype === CNodeTypes.AXIOM) {
+      root.type = TokenTypes.AXIOMNAME;
+    } else {
+      root.type = TokenTypes.THMNAME;
+    }
 
     const children: (TermOpCNode | undefined)[] = opNode.children.map((c) => this.compileTermOpNode(c, blockArgDefMap));
     const argMap: Map<string, TermOpCNode> = new Map();
@@ -618,6 +625,11 @@ export class Compiler {
         });
       }
       return;
+    }
+    if(wantArgs.length === 0) {
+      root.type = TokenTypes.CONSTNAME;
+    } else {
+      root.type = TokenTypes.TERMNAME;
     }
     const children: (TermOpCNode | undefined)[] = opNode.children.map((c) => this.compileTermOpNode(c, argDefMap));
     for (let idx = 0; idx < children.length; idx++) {

@@ -49,12 +49,9 @@ export class Scanner {
 
     while (this.idx < this.text.length) {
       const code = this.text.charCodeAt(this.idx);
-      if (
-        isWhitespace(code) ||
-        isNewLine(code) ||
-        code === charCodes.carriageReturn
-      ) {
-        this.idxPushForward();
+      if (this.isIgnore(code)) {
+        const token = this.getIgnoreToken();
+        tokens.push(token);
         continue;
       }
       if (isSeparator(code)) {
@@ -80,6 +77,42 @@ export class Scanner {
       tokens.push(token);
     }
     return tokens;
+  }
+
+  private isIgnore(code: number): boolean {
+    if(
+        isWhitespace(code) ||
+        isNewLine(code) ||
+        code === charCodes.carriageReturn
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  private getIgnoreToken() {
+    const startPosition = this.position.clone();
+    const startIdx = this.idx;
+    let endPosition = startPosition;
+    this.idxPushForward();
+
+    while (this.idx < this.text.length) {
+      const code = this.text.charCodeAt(this.idx);
+      if (!this.isIgnore(code)) {
+        break;
+      }
+      this.idxPushForward();
+    }
+    endPosition = this.position.clone();
+    const content = this.text.slice(startIdx, this.idx);
+    const range = new RangeImpl(startPosition, endPosition);
+
+    const token = new TokenImpl(
+      TokenTypes.IGNORE,
+      content,
+      range
+    );
+    return token;
   }
 
   private idxPushForward() {

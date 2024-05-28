@@ -43,6 +43,14 @@ export enum TokenTypes {
   WORD,
   COMMENT,
   SEP,
+  IGNORE,
+
+  TYPENAME,
+  ARGNAME,
+  TERMNAME,
+  CONSTNAME,
+  AXIOMNAME,
+  THMNAME,
 }
 
 export interface Token {
