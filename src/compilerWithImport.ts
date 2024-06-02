@@ -275,7 +275,7 @@ export class CompilerWithImport {
         }
       }
     }
-    const { processes, suggestions } = this.getProofProcess(targets, proofs);
+    const { processes, suggestions } = this.getProofProcess(targets, proofs, assumptions);
     const thmCNode: ThmCNode = {
       cnodetype: CNodeTypes.THM,
       astNode: node,
@@ -285,7 +285,7 @@ export class CompilerWithImport {
       diffMap: diffMap,
       proofs: proofs,
       proofProcess: processes,
-      isValid: this.checkProofValidation(assumptions, processes.at(-1)),
+      isValid: this.checkProofValidation(processes.at(-1)),
       suggestions: suggestions,
     };
     this.pushCurrentCNodeList(thmCNode);
@@ -298,26 +298,23 @@ export class CompilerWithImport {
     }
   }
   private checkProofValidation(
-    conditions: TermOpCNode[],
     targets: TermOpCNode[] | undefined
   ): Boolean {
     if (targets === undefined) {
       return false;
     }
-    const conditionSet = new Set(conditions.map((e) => e.funContent));
-    for (const target of targets) {
-      if (!conditionSet.has(target.funContent)) {
-        return false;
-      }
+    if (targets.length === 0) {
+      return true;
     }
-    return true;
+    return false;
   }
-  private getProofProcess(targets: TermOpCNode[], proofs: ProofOpCNode[]) {
+  private getProofProcess(targets: TermOpCNode[], proofs: ProofOpCNode[], assumptions: TermOpCNode[]) {
     const processes: TermOpCNode[][] = [];
     const suggestions: Map<string, TermOpCNode>[][] = [];
     let currentTarget = [...targets];
+    const assumptionSet: Set<string> = new Set(assumptions.map((ass) => ass.funContent));
     for (const proof of proofs) {
-      const nextTarget = this.getNextProof0(currentTarget, proof);
+      const nextTarget = this.getNextProof0(currentTarget, proof, assumptionSet);
       if (nextTarget === undefined) {
         this.errors.push({
           type: ErrorTypes.ProofOpUseless,
@@ -394,7 +391,8 @@ export class CompilerWithImport {
   }
   private getNextProof0(
     targets: TermOpCNode[],
-    proof: ProofOpCNode
+    proof: ProofOpCNode,
+    assumptionSet: Set<string>,
   ): TermOpCNode[] | undefined {
     const proofTargetSet = new Set(proof.targets.map((e) => e.funContent));
     const nextTargets: TermOpCNode[] = [];
@@ -403,7 +401,9 @@ export class CompilerWithImport {
       if (proofTargetSet.has(target.funContent)) {
         proofSomething = true;
       } else {
-        nextTargets.push(target);
+        if (!assumptionSet.has(target.funContent)) {
+          nextTargets.push(target);
+        }
       }
     }
     if (!proofSomething) {
@@ -411,7 +411,9 @@ export class CompilerWithImport {
     }
     if (proofSomething) {
       for (const assumption of proof.assumptions) {
-        nextTargets.push(assumption);
+        if (!assumptionSet.has(assumption.funContent)) {
+          nextTargets.push(assumption);
+        }
       }
     }
     return nextTargets;
