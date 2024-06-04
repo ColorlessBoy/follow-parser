@@ -508,7 +508,7 @@ export class Compiler {
     for (const diffArray of rst) {
       for (let i = 0; i < diffArray.length - 1; i++) {
         const mapi = diffArray[i];
-        for (let j = 1; j < diffArray.length; j++) {
+        for (let j = i+1; j < diffArray.length; j++) {
           const mapj = diffArray[j];
           for (const mi of mapi) {
             for (const mj of mapj) {

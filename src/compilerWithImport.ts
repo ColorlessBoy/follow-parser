@@ -558,7 +558,7 @@ export class CompilerWithImport {
     for (const diffArray of rst) {
       for (let i = 0; i < diffArray.length - 1; i++) {
         const seti = diffArray[i];
-        for (let j = 1; j < diffArray.length; j++) {
+        for (let j = i + 1; j < diffArray.length; j++) {
           const setj = diffArray[j];
           for (const si of seti) {
             for (const sj of setj) {
