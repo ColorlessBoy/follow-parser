@@ -293,3 +293,73 @@ export interface ProofOpCNode {
 }
 
 export const CONTENT_FILE = 'content.follow.json';
+
+export function getFollowErrorMsg(errorType: ErrorTypes): string {
+  switch (errorType) {
+    case ErrorTypes.TypeMissing:
+      return "TypeMissing";
+    case ErrorTypes.NameMissing:
+      return "NameMissing";
+    case ErrorTypes.LeftParenMissing:
+      return "LeftParenMissing";
+    case ErrorTypes.RightParenMissing:
+      return "RightParenMissing";
+    case ErrorTypes.ParamTypeMissing:
+      return "ParamTypeMissing";
+    case ErrorTypes.ParamNameMissing:
+      return "ParamNameMissing";
+    case ErrorTypes.ParamCommaMissing:
+      return "ParamCommaMissing";
+    case ErrorTypes.LeftBraceMissing:
+      return "LeftBraceMissing";
+    case ErrorTypes.RightBraceMissing:
+      return "RightBraceMissing";
+    case ErrorTypes.BodyKeywordMissing:
+      return "BodyKeywordMissing";
+    case ErrorTypes.OpAstRootMissing:
+      return "OpAstRootMissing";
+    case ErrorTypes.EmptyBodyStmt:
+      return "EmptyBodyStmt";
+    case ErrorTypes.DupDiff:
+      return "DupDiff";
+    case ErrorTypes.SingleDiff:
+      return "SingleDiff";
+    case ErrorTypes.DiffNotWord:
+      return "DiffNotWord";
+    case ErrorTypes.TargetMissing:
+      return "TargetMissing";
+    case ErrorTypes.ProofEqMissing:
+      return "ProofEqMissing";
+    case ErrorTypes.DupDefType:
+      return "DupDefType";
+    case ErrorTypes.TypeDefMissing:
+      return "TypeDefMissing";
+    case ErrorTypes.NotType:
+      return "NotType";
+    case ErrorTypes.DupName:
+      return "DupName";
+    case ErrorTypes.DupArgName:
+      return "DupArgName";
+    case ErrorTypes.DiffIsKeyword:
+      return "DiffIsKeyword";
+    case ErrorTypes.DiffIsNotArg:
+      return "DiffIsNotArg";
+    case ErrorTypes.TermDefMissing:
+      return "TermDefMissing";
+    case ErrorTypes.TooManyArg:
+      return "TooManyArg";
+    case ErrorTypes.TooLessArg:
+      return "TooLessArg";
+    case ErrorTypes.ArgTypeError:
+      return "ArgTypeError";
+    case ErrorTypes.AxiomThmDefMissing:
+      return "AxiomThmDefMissing";
+    case ErrorTypes.ProofDiffError:
+      return "ProofDiffError";
+    case ErrorTypes.ProofOpUseless:
+      return "ProofOpUseless";
+    case ErrorTypes.ThmWithoutValidProof:
+      return "ThmWithoutValidProof";
+  }
+  return "";
+}
