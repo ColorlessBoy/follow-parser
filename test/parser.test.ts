@@ -32,7 +32,7 @@ describe("Parser", () => {
   });
   it("#3 Axiom Block", () => {
     const text = `axiom ax-1(Prop p1, Prop p2) { |- imply(p1, imply(p2, p1))}
-    axiom ax-mp(Prop p1, Prop p2) { diff p1 p2 -| p1 imply(p1, p2) |- p2}
+    axiom ax-mp(Prop p1, Prop p2) { diff (p1, p2) -| p1 imply(p1, p2) |- p2}
     `;
     const scanner = new Scanner();
     const parser = new Parser();
@@ -47,7 +47,7 @@ describe("Parser", () => {
     expect(parser.errors.length).toBe(0);
   });
   it("#4 Thm Block", () => {
-    const text = `thm a1i(Prop p1, Prop p2) { diff p1 p2 -| p1 |- imply(p2, p1) } = {ax-mp(p1, imply(p1, p2)) ax-1(p1, p2)}`;
+    const text = `thm a1i(Prop p1, Prop p2) { diff (p1,p2) -| p1 |- imply(p2, p1) } = {ax-mp(p1, imply(p1, p2)) ax-1(p1, p2)}`;
     const scanner = new Scanner();
     const parser = new Parser();
     const tokens = scanner.scan(text);

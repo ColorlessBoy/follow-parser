@@ -194,6 +194,7 @@ export enum ErrorTypes {
   OpAstRootMissing,
   EmptyBodyStmt,
   DupDiff,
+  SingleDiff,
   DiffNotWord,
   TargetMissing,
   ProofEqMissing,

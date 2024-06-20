@@ -13,8 +13,8 @@ import {
   Error,
   Position,
   Keywords,
-} from './types';
-import { RangeImpl } from './scanner';
+} from "./types";
+import { RangeImpl } from "./scanner";
 
 export class Parser {
   public astNodes: ASTNode[] = [];
@@ -59,7 +59,7 @@ export class Parser {
     name.type = TokenTypes.THMNAME;
     // parse params
     const leftBrace = tokens.at(2);
-    if (leftBrace === undefined || leftBrace.content !== '(') {
+    if (leftBrace === undefined || leftBrace.content !== "(") {
       this.errors.push({
         type: ErrorTypes.LeftParenMissing,
         token: leftBrace || name,
@@ -68,7 +68,7 @@ export class Parser {
     }
     let i = 3;
     for (; i < tokens.length; i++) {
-      if (tokens[i].content === ')') {
+      if (tokens[i].content === ")") {
         break;
       }
     }
@@ -85,7 +85,7 @@ export class Parser {
     // body.
     let content: Token[] = [];
     if (i < tokens.length) {
-      if (tokens[i].content !== '{') {
+      if (tokens[i].content !== "{") {
         this.errors.push({
           type: ErrorTypes.LeftBraceMissing,
           token: tokens[i],
@@ -94,7 +94,7 @@ export class Parser {
         i += 1;
       }
       let j = i + 1;
-      while (j < tokens.length && tokens[j].content !== '}') {
+      while (j < tokens.length && tokens[j].content !== "}") {
         j++;
       }
       if (i < j) {
@@ -119,9 +119,8 @@ export class Parser {
       });
       return;
     }
-
     const eqNode = tokens.at(i);
-    if (eqNode === undefined || eqNode.content !== '=') {
+    if (eqNode === undefined || eqNode.content !== "=") {
       this.errors.push({
         type: ErrorTypes.LeftBraceMissing,
         token: name,
@@ -129,11 +128,10 @@ export class Parser {
     } else {
       i += 1;
     }
-
     // proof.
     let proofTokens: Token[] = [];
     if (i < tokens.length) {
-      if (tokens[i].content !== '{') {
+      if (tokens[i].content !== "{") {
         this.errors.push({
           type: ErrorTypes.LeftBraceMissing,
           token: tokens[i],
@@ -142,7 +140,7 @@ export class Parser {
         i += 1;
       }
       let j = i + 1;
-      while (j < tokens.length && tokens[j].content !== '}') {
+      while (j < tokens.length && tokens[j].content !== "}") {
         j++;
       }
       if (i < j) {
@@ -150,7 +148,6 @@ export class Parser {
       }
       i = j;
     }
-    rightBrace = tokens.at(i);
 
     const proof = this.parseOpNode(proofTokens);
     // empty proof 继续进入compile阶段，被当成axiom
@@ -158,20 +155,35 @@ export class Parser {
     // range
     let end: Position = proof.at(-1)?.range.end || keyword.range.end;
     const lastTarget = targets.at(-1);
-    if (lastTarget && lastTarget.range.end.line >= end.line && lastTarget.range.end.character >= end.character) {
+    if (
+      lastTarget &&
+      lastTarget.range.end.line >= end.line &&
+      lastTarget.range.end.character >= end.character
+    ) {
       end = lastTarget.range.end;
     }
     const lastAssume = assumptions.at(-1);
-    if (lastAssume && lastAssume.range.end.line >= end.line && lastAssume.range.end.character >= end.character) {
+    if (
+      lastAssume &&
+      lastAssume.range.end.line >= end.line &&
+      lastAssume.range.end.character >= end.character
+    ) {
       end = lastAssume.range.end;
     }
     const lastDiff = diffs.at(-1)?.at(-1);
-    if (lastDiff && lastDiff.range.end.line >= end.line && lastDiff.range.end.character >= end.character) {
+    if (
+      lastDiff &&
+      lastDiff.range.end.line >= end.line &&
+      lastDiff.range.end.character >= end.character
+    ) {
       end = lastDiff.range.end;
     }
 
     const nodetype: NodeTypes.THM = NodeTypes.THM;
-    const range = new RangeImpl(keyword.range.start, rightBrace?.range.end || end);
+    const range = new RangeImpl(
+      keyword.range.start,
+      tokens.at(-1)?.range.end || end
+    );
     const astNode: ThmASTNode = {
       nodetype: nodetype,
       range: range,
@@ -199,7 +211,7 @@ export class Parser {
     name.type = TokenTypes.AXIOMNAME;
     // parse params
     const leftBrace = tokens.at(2);
-    if (leftBrace === undefined || leftBrace.content !== '(') {
+    if (leftBrace === undefined || leftBrace.content !== "(") {
       this.errors.push({
         type: ErrorTypes.LeftParenMissing,
         token: leftBrace || name,
@@ -208,7 +220,7 @@ export class Parser {
     }
     let i = 3;
     for (; i < tokens.length; i++) {
-      if (tokens[i].content === ')') {
+      if (tokens[i].content === ")") {
         break;
       }
     }
@@ -225,7 +237,7 @@ export class Parser {
     // body.
     let content: Token[] = [];
     if (i < tokens.length) {
-      if (tokens[i].content !== '{') {
+      if (tokens[i].content !== "{") {
         this.errors.push({
           type: ErrorTypes.LeftBraceMissing,
           token: tokens[i],
@@ -234,7 +246,7 @@ export class Parser {
         i += 1;
       }
       let j = i + 1;
-      while (j < tokens.length && tokens[j].content !== '}') {
+      while (j < tokens.length && tokens[j].content !== "}") {
         j++;
       }
       if (i < j) {
@@ -261,20 +273,35 @@ export class Parser {
     // range
     let end: Position | undefined = keyword.range.end;
     const lastTarget = targets.at(-1);
-    if (lastTarget && lastTarget.range.end.line >= end.line && lastTarget.range.end.character >= end.character) {
+    if (
+      lastTarget &&
+      lastTarget.range.end.line >= end.line &&
+      lastTarget.range.end.character >= end.character
+    ) {
       end = lastTarget.range.end;
     }
     const lastAssume = assumptions.at(-1);
-    if (lastAssume && lastAssume.range.end.line >= end.line && lastAssume.range.end.character >= end.character) {
+    if (
+      lastAssume &&
+      lastAssume.range.end.line >= end.line &&
+      lastAssume.range.end.character >= end.character
+    ) {
       end = lastAssume.range.end;
     }
     const lastDiff = diffs.at(-1)?.at(-1);
-    if (lastDiff && lastDiff.range.end.line >= end.line && lastDiff.range.end.character >= end.character) {
+    if (
+      lastDiff &&
+      lastDiff.range.end.line >= end.line &&
+      lastDiff.range.end.character >= end.character
+    ) {
       end = lastDiff.range.end;
     }
 
     const nodetype: NodeTypes.AXIOM = NodeTypes.AXIOM;
-    const range = new RangeImpl(keyword.range.start, rightBrace?.range.end || end);
+    const range = new RangeImpl(
+      keyword.range.start,
+      rightBrace?.range.end || end
+    );
     const astNode: AxiomASTNode = {
       nodetype: nodetype,
       range: range,
@@ -290,7 +317,11 @@ export class Parser {
   private parseBody(content: Token[], paramSet: Set<string>) {
     const statements = [];
     for (const token of content) {
-      if (token.content === Keywords.TARGET || token.content === Keywords.ASSUME || token.content === Keywords.DIFF) {
+      if (
+        token.content === Keywords.TARGET ||
+        token.content === Keywords.ASSUME ||
+        token.content === Keywords.DIFF
+      ) {
         statements.push([token]);
         continue;
       }
@@ -308,7 +339,10 @@ export class Parser {
     const assumptions: OpAstNode[] = [];
     const diffs: Token[][] = [];
     for (const stmt of statements) {
-      if (stmt[0].content === Keywords.TARGET || stmt[0].content === Keywords.ASSUME) {
+      if (
+        stmt[0].content === Keywords.TARGET ||
+        stmt[0].content === Keywords.ASSUME
+      ) {
         const opNodes = this.parseOpNode(stmt.slice(1));
         if (opNodes.length === 0) {
           this.errors.push({
@@ -323,38 +357,15 @@ export class Parser {
           }
         }
       } else {
-        const s: Set<string> = new Set();
-        const tmp: Token[] = [];
-        for (const word of stmt.slice(1)) {
-          if (word.type !== TokenTypes.WORD) {
-            this.errors.push({
-              type: ErrorTypes.DiffNotWord,
-              token: word,
-            });
-          } else if (s.has(word.content)) {
-            this.errors.push({
-              type: ErrorTypes.DupDiff,
-              token: word,
-            });
-          } else if (!paramSet.has(word.content)) {
-            // arg 的名字本来就不允许和 term 的名字一样，所以只需要限制 arg 之间就好了。
-            this.errors.push({
-              type: ErrorTypes.DiffIsNotArg,
-              token: word,
-            });
-          } else {
-            tmp.push(word);
-            s.add(word.content);
-            word.type = TokenTypes.ARGNAME;
-          }
-        }
-        if (tmp.length === 0) {
+        // parse `diff (s1, s2) (s3, s4)
+        const diffParts = this.parseDiff(stmt, paramSet);
+        if (diffParts.length === 0) {
           this.errors.push({
             type: ErrorTypes.EmptyBodyStmt,
             token: stmt[0],
           });
         } else {
-          diffs.push(tmp);
+          diffs.push(...diffParts);
         }
       }
     }
@@ -364,13 +375,55 @@ export class Parser {
       diffs: diffs,
     };
   }
+  private parseDiff(tokens: Token[], paramSet: Set<string>): Token[][] {
+    const parts: Token[][] = [];
+    for (const token of tokens) {
+      if (token.content === "(") {
+        parts.push([]);
+        continue;
+      } else if (token.type === TokenTypes.WORD) {
+        if (!paramSet.has(token.content)) {
+          // arg 的名字本来就不允许和 term 的名字一样，所以只需要限制 arg 之间就好了。
+          this.errors.push({
+            type: ErrorTypes.DiffIsNotArg,
+            token: token,
+          });
+        } else {
+          const last = parts.at(-1);
+          if (last) {
+            const same = last.filter((t) => t.content === token.content);
+            if (same.length > 0) {
+              this.errors.push({
+                type: ErrorTypes.DupDiff,
+                token: token,
+              });
+            } else {
+              last.push(token);
+            }
+          } else {
+            parts.push([token]);
+          }
+        }
+      }
+    }
+    parts
+      .filter((part) => part.length === 1)
+      .forEach((part) => {
+        const token = part[0];
+        this.errors.push({
+          type: ErrorTypes.SingleDiff,
+          token: token,
+        });
+      });
+    return parts.filter((part) => part.length > 1);
+  }
   private parseOpNode(tokens: Token[]): OpAstNode[] {
     let stack: (Token | OpAstNode)[] = [];
 
     for (let i = 0; i < tokens.length; i++) {
       const token = tokens[i];
       if (token.type === TokenTypes.WORD) {
-        if (i + 1 < tokens.length && tokens[i + 1].content === '(') {
+        if (i + 1 < tokens.length && tokens[i + 1].content === "(") {
           stack.push(token);
           i += 1;
         } else {
@@ -381,12 +434,12 @@ export class Parser {
           };
           stack.push(node);
         }
-      } else if (token.content === ')') {
+      } else if (token.content === ")") {
         let j = stack.length - 1;
         const children: OpAstNode[] = [];
         for (; j >= 0; j--) {
           const node = stack[j];
-          if ('root' in node && 'children' in node && 'range' in node) {
+          if ("root" in node && "children" in node && "range" in node) {
             children.push(node);
           } else {
             break;
@@ -395,7 +448,10 @@ export class Parser {
         if (j >= 0) {
           const root = stack[j] as Token;
           stack = stack.slice(0, j);
-          const range = new RangeImpl(root.range.start, token.range.end || children.at(0)?.range.end || root.range.end);
+          const range = new RangeImpl(
+            root.range.start,
+            token.range.end || children.at(0)?.range.end || root.range.end
+          );
 
           children.reverse();
           const node: OpAstNode = {
@@ -403,7 +459,7 @@ export class Parser {
             children: children,
             range: range,
           };
-          if(children.length === 0) {
+          if (children.length === 0) {
             root.type = TokenTypes.CONSTNAME;
           } else {
             root.type = TokenTypes.TERMNAME;
@@ -414,7 +470,7 @@ export class Parser {
     }
     const rst: OpAstNode[] = [];
     for (const node of stack) {
-      if ('root' in node && 'children' in node && 'range' in node) {
+      if ("root" in node && "children" in node && "range" in node) {
         rst.push(node);
       } else {
         this.errors.push({
@@ -455,10 +511,10 @@ export class Parser {
     let rightBrace = leftBrace;
     let params: ParamPair[] = [];
     let i = 3;
-    if (leftBrace && leftBrace.content === '(') {
+    if (leftBrace && leftBrace.content === "(") {
       i += 1;
       for (; i < tokens.length; i++) {
-        if (tokens[i].content === ')') {
+        if (tokens[i].content === ")") {
           break;
         }
       }
@@ -477,7 +533,7 @@ export class Parser {
     // content is alternative in term block, too.
     let content: Token[] = [name]; // default content is its name.
     if (i < tokens.length) {
-      if (tokens[i].content !== '{') {
+      if (tokens[i].content !== "{") {
         this.errors.push({
           type: ErrorTypes.LeftBraceMissing,
           token: tokens[i],
@@ -487,7 +543,7 @@ export class Parser {
       }
       // right most match
       let j = tokens.length - 1;
-      while (j > i && tokens[j].content !== '}') {
+      while (j > i && tokens[j].content !== "}") {
         j--;
       }
       if (i < j) {
@@ -497,7 +553,10 @@ export class Parser {
     const nodetype: NodeTypes.TERM = NodeTypes.TERM;
     const range = new RangeImpl(
       keyword.range.start,
-      content.at(-1)?.range.end || rightBrace?.range.end || params.at(-1)?.name.range.end || name.range.end,
+      content.at(-1)?.range.end ||
+        rightBrace?.range.end ||
+        params.at(-1)?.name.range.end ||
+        name.range.end
     );
     const astNode: TermASTNode = {
       nodetype: nodetype,
@@ -536,7 +595,7 @@ export class Parser {
         i += 2;
         continue;
       }
-      tokens[i+1].type = TokenTypes.ARGNAME;
+      tokens[i + 1].type = TokenTypes.ARGNAME;
       params.push({
         type: tokens[i],
         name: tokens[i + 1],
@@ -545,7 +604,7 @@ export class Parser {
 
       // Check comma. ErrorTypes.ParamCommaMissing is not harmful.
       if (i < tokens.length) {
-        if (tokens[i].content !== ',') {
+        if (tokens[i].content !== ",") {
           this.errors.push({
             type: ErrorTypes.ParamCommaMissing,
             token: tokens[i + 1],
@@ -574,7 +633,10 @@ export class Parser {
         token: keyword,
       });
     }
-    const range = new RangeImpl(keyword.range.start, tokens.at(-1)?.range.start || keyword.range.end);
+    const range = new RangeImpl(
+      keyword.range.start,
+      tokens.at(-1)?.range.start || keyword.range.end
+    );
     const nodetype: NodeTypes.TYPE = NodeTypes.TYPE;
     const astNode: TypeASTNode = {
       nodetype: nodetype,
@@ -588,7 +650,7 @@ export class Parser {
     const tokenBlocks: Token[][] = [];
     for (let i = 0; i < tokens.length; i++) {
       const token = tokens[i];
-      if(token.type === TokenTypes.IGNORE) {
+      if (token.type === TokenTypes.IGNORE) {
         continue;
       } else if (token.type === TokenTypes.COMMENT) {
         this.commentTokens.push(token);
@@ -607,7 +669,12 @@ export class Parser {
   }
 }
 
-const startKeyTokenSet: Set<string> = new Set([Keywords.TYPE, Keywords.TERM, Keywords.AXIOM, Keywords.THM]);
+const startKeyTokenSet: Set<string> = new Set([
+  Keywords.TYPE,
+  Keywords.TERM,
+  Keywords.AXIOM,
+  Keywords.THM,
+]);
 const isStartKeyToken = (token: Token | undefined) => {
   if (token === undefined) {
     return false;
