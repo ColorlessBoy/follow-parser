@@ -390,6 +390,7 @@ export class Parser {
           });
         } else {
           const last = parts.at(-1);
+          token.type = TokenTypes.ARGNAME;
           if (last) {
             const same = last.filter((t) => t.content === token.content);
             if (same.length > 0) {
