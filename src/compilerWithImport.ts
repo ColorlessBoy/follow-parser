@@ -250,12 +250,12 @@ export class CompilerWithImport {
     const proofs: ProofOpCNode[] = [];
     const diffMap = this.getDiffMap(node.diffs);
     for (const opNode of node.proof) {
-      const proofOpCNode = this.compileProofOpNode(opNode, argDefMap);
+      const proofOpCNode = this.compileProofOpNode(opNode, argDefMap, diffMap);
       if (proofOpCNode) {
         proofs.push(proofOpCNode);
       }
     }
-    const { processes, suggestions } = this.getProofProcess(targets, proofs, assumptions, diffMap);
+    const { processes, suggestions } = this.getProofProcess(targets, proofs, assumptions);
     const thmCNode: ThmCNode = {
       cnodetype: CNodeTypes.THM,
       astNode: node,
@@ -292,16 +292,11 @@ export class CompilerWithImport {
     targets: TermOpCNode[],
     proofs: ProofOpCNode[],
     assumptions: TermOpCNode[],
-    diffMap: Map<string, Set<string>>,
   ) {
     const processes: TermOpCNode[][] = [];
     const suggestions: Map<string, TermOpCNode>[][] = [];
     const assumptionSet: Set<string> = new Set(assumptions.map((ass) => ass.funContent));
     let currentTarget = [...targets];
-    let currentDiffMap: Map<string, Set<string>> = new Map();
-    for (const item of diffMap) {
-      currentDiffMap.set(item[0], new Set(item[1]));
-    }
     for (const proof of proofs) {
       // check target
       const nextTarget = this.getNextProof0(currentTarget, proof, assumptionSet);
@@ -319,18 +314,6 @@ export class CompilerWithImport {
           suggestions.push([this.getSuggestion2(proof)]);
         } else {
           suggestions.push([]);
-        }
-        // check diff
-        proof.diffError = this.checkDiffCondition(proof.root, currentDiffMap, proof.diffs);
-        for (const item of proof.diffs) {
-          const currentSet = currentDiffMap.get(item[0]);
-          if (currentSet === undefined) {
-            currentDiffMap.set(item[0], new Set(item[1]));
-          } else {
-            item[1].forEach((s) => {
-              currentSet.add(s);
-            });
-          }
         }
       }
     }
@@ -466,7 +449,8 @@ export class CompilerWithImport {
   }
   private compileProofOpNode(
     opNode: OpAstNode,
-    blockArgDefMap: Map<string, ParamPair>
+    blockArgDefMap: Map<string, ParamPair>,
+    targetDiffMap: Map<string, Set<string>>
   ): ProofOpCNode | undefined {
     const root = opNode.root;
     const definition = this.getDefinition(root.content);
@@ -548,6 +532,7 @@ export class CompilerWithImport {
     const blockArgSet: Set<string> = new Set();
     blockArgDefMap.forEach((pair) => blockArgSet.add(pair.name.content));
     const diffs = this.replaceDiffs(definition2.diffArray, argMap, blockArgSet);
+    const diffErrors = this.checkDiffCondition(root, targetDiffMap, diffs);
 
     const proofOpCNode: ProofOpCNode = {
       root: root,
@@ -558,6 +543,7 @@ export class CompilerWithImport {
       assumptions: assumptions,
       diffs: diffs,
       useVirtual: useVirtual,
+      diffError: diffErrors || undefined
     };
     return proofOpCNode;
   }
