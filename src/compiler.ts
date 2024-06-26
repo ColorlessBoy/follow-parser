@@ -233,39 +233,14 @@ export class Compiler {
       const proofOpCNode = this.compileProofOpNode(opNode, argDefMap);
       if (proofOpCNode) {
         proofs.push(proofOpCNode);
-        // check diff
-        const diffError: string[] = [];
-        for (const item of proofOpCNode.diffs) {
-          const bodyDiff = diffMap.get(item[0]);
-          if (bodyDiff === undefined) {
-            this.errors.push({
-              type: ErrorTypes.ProofDiffError,
-              token: proofOpCNode.root,
-            });
-            for (const v of item[1]) {
-              diffError.push(item[0], ",", v);
-            }
-            break;
-          }
-          for (const v of item[1]) {
-            if (!bodyDiff.has(v)) {
-              this.errors.push({
-                type: ErrorTypes.ProofDiffError,
-                token: proofOpCNode.root,
-              });
-              diffError.push(item[0], ",", v);
-              break;
-            }
-          }
-        }
-        proofOpCNode.diffError = diffError;
       }
     }
 
     const { processes, suggestions } = this.getProofProcess(
       targets,
       proofs,
-      assumptions
+      assumptions,
+      diffMap
     );
     const thmCNode: ThmCNode = {
       cnodetype: CNodeTypes.THM,
@@ -300,20 +275,20 @@ export class Compiler {
   private getProofProcess(
     targets: TermOpCNode[],
     proofs: ProofOpCNode[],
-    assumptions: TermOpCNode[]
+    assumptions: TermOpCNode[],
+    diffMap: Map<string, Set<string>>,
   ) {
     const processes: TermOpCNode[][] = [];
     const suggestions: Map<string, TermOpCNode>[][] = [];
-    const assumptionSet: Set<string> = new Set(
-      assumptions.map((ass) => ass.funContent)
-    );
+    const assumptionSet: Set<string> = new Set(assumptions.map((ass) => ass.funContent));
     let currentTarget = [...targets];
+    let currentDiffMap: Map<string, Set<string>> = new Map();
+    for (const item of diffMap) {
+      currentDiffMap.set(item[0], new Set(item[1]));
+    }
     for (const proof of proofs) {
-      const nextTarget = this.getNextProof0(
-        currentTarget,
-        proof,
-        assumptionSet
-      );
+      // check target
+      const nextTarget = this.getNextProof0(currentTarget, proof, assumptionSet);
       if (nextTarget === undefined) {
         this.errors.push({
           type: ErrorTypes.ProofOpUseless,
@@ -329,9 +304,52 @@ export class Compiler {
         } else {
           suggestions.push([]);
         }
+        // check diff
+        proof.diffError = this.checkDiffCondition(proof.root, currentDiffMap, proof.diffs);
+        for (const item of proof.diffs) {
+          const currentSet = currentDiffMap.get(item[0]);
+          if (currentSet === undefined) {
+            currentDiffMap.set(item[0], new Set(item[1]));
+          } else {
+            item[1].forEach((s) => {
+              currentSet.add(s);
+            });
+          }
+        }
       }
     }
     return { processes, suggestions };
+  }
+  private checkDiffCondition(
+    root: Token,
+    targetDiffMap: Map<string, Set<string>>,
+    newDiffMap: Map<string, Set<string>>,
+  ) {
+    const diffError: string[] = [];
+    for (const item of newDiffMap) {
+      const bodyDiff = targetDiffMap.get(item[0]);
+      if (bodyDiff === undefined) {
+        this.errors.push({
+          type: ErrorTypes.ProofDiffError,
+          token: root,
+        });
+        for (const v of item[1]) {
+          diffError.push(item[0], ',', v);
+        }
+        break;
+      }
+      for (const v of item[1]) {
+        if (!bodyDiff.has(v)) {
+          this.errors.push({
+            type: ErrorTypes.ProofDiffError,
+            token: root,
+          });
+          diffError.push(item[0], ',', v);
+          break;
+        }
+      }
+    }
+    return diffError;
   }
   private getSuggestion2(proof: ProofOpCNode): Map<string, TermOpCNode> {
     const suggestions: Map<string, TermOpCNode> = new Map();
