@@ -58,7 +58,7 @@ export class Parser {
     }
     name.type = TokenTypes.THMNAME;
     // parse params
-    const leftBrace = tokens.at(2);
+    let leftBrace = tokens.at(2);
     if (leftBrace === undefined || leftBrace.content !== "(") {
       this.errors.push({
         type: ErrorTypes.LeftParenMissing,
@@ -91,6 +91,7 @@ export class Parser {
           token: tokens[i],
         });
       } else {
+        leftBrace = tokens[i];
         i += 1;
       }
       let j = i + 1;
@@ -210,7 +211,7 @@ export class Parser {
     }
     name.type = TokenTypes.AXIOMNAME;
     // parse params
-    const leftBrace = tokens.at(2);
+    let leftBrace = tokens.at(2);
     if (leftBrace === undefined || leftBrace.content !== "(") {
       this.errors.push({
         type: ErrorTypes.LeftParenMissing,
@@ -243,6 +244,7 @@ export class Parser {
           token: tokens[i],
         });
       } else {
+        leftBrace = tokens[i];
         i += 1;
       }
       let j = i + 1;
@@ -508,7 +510,7 @@ export class Parser {
 
     // parse params.
     // Params is alternative in term block.
-    const leftBrace = tokens.at(3);
+    let leftBrace = tokens.at(3);
     let rightBrace = leftBrace;
     let params: ParamPair[] = [];
     let i = 3;
@@ -540,6 +542,7 @@ export class Parser {
           token: tokens[i],
         });
       } else {
+        leftBrace = tokens[i];
         i += 1;
       }
       // right most match
@@ -606,6 +609,7 @@ export class Parser {
       // Check comma. ErrorTypes.ParamCommaMissing is not harmful.
       if (i < tokens.length) {
         if (tokens[i].content !== ",") {
+          continue;
           this.errors.push({
             type: ErrorTypes.ParamCommaMissing,
             token: tokens[i + 1],
