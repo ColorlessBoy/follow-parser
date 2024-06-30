@@ -335,21 +335,11 @@ export class CompilerWithImport {
         continue;
       }
       const bodyDiff = targetDiffMap.get(item[0]);
-      if (bodyDiff === undefined) {
-        this.errors.push({
-          type: ErrorTypes.ProofDiffError,
-          token: root,
-        });
-        for (const v of item[1]) {
-          diffError.push(`(${item[0]},${v})`);
-        }
-        break;
-      }
       for (const v of item[1]) {
         if (!blockArgSet.has(v)) {
           continue;
         }
-        if (!bodyDiff.has(v)) {
+        if (bodyDiff === undefined || !bodyDiff.has(v)) {
           this.errors.push({
             type: ErrorTypes.ProofDiffError,
             token: root,
