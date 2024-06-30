@@ -89,6 +89,7 @@ describe("Compiler", () => {
 
     const compiler = new Compiler();
     compiler.compileCode(text);
+
     expect(compiler.cNodeList.length).toBe(7);
     expect(compiler.errors.length).toBe(3);
     expect((compiler.cNodeList[6] as ThmCNode).suggestions.length).toBe(1);

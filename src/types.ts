@@ -57,6 +57,7 @@ export interface Token {
   type: TokenTypes;
   content: string;
   range: Range;
+  error?: ErrorTypes;
 }
 
 export enum NodeTypes {
@@ -267,6 +268,7 @@ export interface ThmCNode extends CNode {
   proofProcess: TermOpCNode[][];
   isValid: Boolean;
   suggestions: Map<string, TermOpCNode>[][];
+  suggestionProof: ProofOpCNode[][];
 }
 
 export interface TermOpCNode {
@@ -297,69 +299,69 @@ export const CONTENT_FILE = 'content.follow.json';
 export function getFollowErrorMsg(errorType: ErrorTypes): string {
   switch (errorType) {
     case ErrorTypes.TypeMissing:
-      return "TypeMissing";
+      return 'TypeMissing';
     case ErrorTypes.NameMissing:
-      return "NameMissing";
+      return 'NameMissing';
     case ErrorTypes.LeftParenMissing:
-      return "LeftParenMissing";
+      return 'LeftParenMissing';
     case ErrorTypes.RightParenMissing:
-      return "RightParenMissing";
+      return 'RightParenMissing';
     case ErrorTypes.ParamTypeMissing:
-      return "ParamTypeMissing";
+      return 'ParamTypeMissing';
     case ErrorTypes.ParamNameMissing:
-      return "ParamNameMissing";
+      return 'ParamNameMissing';
     case ErrorTypes.ParamCommaMissing:
-      return "ParamCommaMissing";
+      return 'ParamCommaMissing';
     case ErrorTypes.LeftBraceMissing:
-      return "LeftBraceMissing";
+      return 'LeftBraceMissing';
     case ErrorTypes.RightBraceMissing:
-      return "RightBraceMissing";
+      return 'RightBraceMissing';
     case ErrorTypes.BodyKeywordMissing:
-      return "BodyKeywordMissing";
+      return 'BodyKeywordMissing';
     case ErrorTypes.OpAstRootMissing:
-      return "OpAstRootMissing";
+      return 'OpAstRootMissing';
     case ErrorTypes.EmptyBodyStmt:
-      return "EmptyBodyStmt";
+      return 'EmptyBodyStmt';
     case ErrorTypes.DupDiff:
-      return "DupDiff";
+      return 'DupDiff';
     case ErrorTypes.SingleDiff:
-      return "SingleDiff";
+      return 'SingleDiff';
     case ErrorTypes.DiffNotWord:
-      return "DiffNotWord";
+      return 'DiffNotWord';
     case ErrorTypes.TargetMissing:
-      return "TargetMissing";
+      return 'TargetMissing';
     case ErrorTypes.ProofEqMissing:
-      return "ProofEqMissing";
+      return 'ProofEqMissing';
     case ErrorTypes.DupDefType:
-      return "DupDefType";
+      return 'DupDefType';
     case ErrorTypes.TypeDefMissing:
-      return "TypeDefMissing";
+      return 'TypeDefMissing';
     case ErrorTypes.NotType:
-      return "NotType";
+      return 'NotType';
     case ErrorTypes.DupName:
-      return "DupName";
+      return 'DupName';
     case ErrorTypes.DupArgName:
-      return "DupArgName";
+      return 'DupArgName';
     case ErrorTypes.DiffIsKeyword:
-      return "DiffIsKeyword";
+      return 'DiffIsKeyword';
     case ErrorTypes.DiffIsNotArg:
-      return "DiffIsNotArg";
+      return 'DiffIsNotArg';
     case ErrorTypes.TermDefMissing:
-      return "TermDefMissing";
+      return 'TermDefMissing';
     case ErrorTypes.TooManyArg:
-      return "TooManyArg";
+      return 'TooManyArg';
     case ErrorTypes.TooLessArg:
-      return "TooLessArg";
+      return 'TooLessArg';
     case ErrorTypes.ArgTypeError:
-      return "ArgTypeError";
+      return 'ArgTypeError';
     case ErrorTypes.AxiomThmDefMissing:
-      return "AxiomThmDefMissing";
+      return 'AxiomThmDefMissing';
     case ErrorTypes.ProofDiffError:
-      return "ProofDiffError";
+      return 'ProofDiffError';
     case ErrorTypes.ProofOpUseless:
-      return "ProofOpUseless";
+      return 'ProofOpUseless';
     case ErrorTypes.ThmWithoutValidProof:
-      return "ThmWithoutValidProof";
+      return 'ThmWithoutValidProof';
   }
-  return "";
+  return '';
 }
