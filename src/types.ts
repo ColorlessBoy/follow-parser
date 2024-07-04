@@ -16,6 +16,8 @@ export interface Position {
    * line length.
    */
   character: number;
+
+  offset: number;
 }
 export interface Range {
   /**
@@ -29,13 +31,13 @@ export interface Range {
 }
 
 export enum Keywords {
-  TYPE = 'type',
-  TERM = 'term',
-  AXIOM = 'axiom',
-  THM = 'thm',
-  TARGET = '|-',
-  ASSUME = '-|',
-  DIFF = 'diff',
+  TYPE = "type",
+  TERM = "term",
+  AXIOM = "axiom",
+  THM = "thm",
+  TARGET = "|-",
+  ASSUME = "-|",
+  DIFF = "diff",
 }
 
 export enum TokenTypes {
@@ -51,6 +53,8 @@ export enum TokenTypes {
   CONSTNAME,
   AXIOMNAME,
   THMNAME,
+
+  TOKENTREE,
 }
 
 export interface Token {
@@ -58,6 +62,7 @@ export interface Token {
   content: string;
   range: Range;
   error?: ErrorTypes;
+  comment?: string;
 }
 
 export enum NodeTypes {
@@ -73,65 +78,99 @@ export function astnodeToString(node: Node): string {
   switch (node.nodetype) {
     case NodeTypes.TYPE:
       const typeNode = node as TypeASTNode;
-      return 'type ' + typeNode.types.map((e) => e.content).join(' ');
+      return "type " + typeNode.types.map((e) => e.content).join(" ");
     case NodeTypes.TERM:
       const termNode = node as TermASTNode;
       let s1 =
-        'term ' +
+        "term " +
         termNode.type.content +
-        ' ' +
+        " " +
         termNode.name.content +
-        '(' +
-        termNode.params.map((e) => e.type.content + ' ' + e.name.content).join(', ') +
-        ')';
+        "(" +
+        termNode.params
+          .map((e) => e.type.content + " " + e.name.content)
+          .join(", ") +
+        ")";
       if (termNode.content.length > 0) {
-        s1 += ' {' + termNode.content.map((e) => e.content).join(' ') + '}';
+        s1 += " {" + termNode.content.map((e) => e.content).join(" ") + "}";
       }
       return s1;
     case NodeTypes.AXIOM:
       const axiomNode = node as AxiomASTNode;
       let s2 =
-        'axiom ' +
+        "axiom " +
         axiomNode.name.content +
-        '(' +
-        axiomNode.params.map((e) => e.type.content + ' ' + e.name.content).join(', ') +
-        ')' +
-        '{';
+        "(" +
+        axiomNode.params
+          .map((e) => e.type.content + " " + e.name.content)
+          .join(", ") +
+        ")" +
+        "{";
       if (axiomNode.diffs.length > 0) {
-        s2 += '\n' + axiomNode.diffs.map((e) => '  diff ' + e.map((t) => t.content).join(' ')).join('\n');
+        s2 +=
+          "\n" +
+          axiomNode.diffs
+            .map((e) => "  diff " + e.map((t) => t.content).join(" "))
+            .join("\n");
       }
       if (axiomNode.assumptions.length > 0) {
-        s2 += '\n' + axiomNode.assumptions.map((e) => '  -| ' + opAstNodeToString(e)).join('\n');
+        s2 +=
+          "\n" +
+          axiomNode.assumptions
+            .map((e) => "  -| " + opAstNodeToString(e))
+            .join("\n");
       }
-      s2 += '\n' + axiomNode.targets.map((e) => '  |- ' + opAstNodeToString(e)).join('\n') + '\n}';
+      s2 +=
+        "\n" +
+        axiomNode.targets
+          .map((e) => "  |- " + opAstNodeToString(e))
+          .join("\n") +
+        "\n}";
       return s2;
     case NodeTypes.THM:
       const thmNode = node as ThmASTNode;
       let s3 =
-        'thm ' +
+        "thm " +
         thmNode.name.content +
-        '(' +
-        thmNode.params.map((e) => e.type.content + ' ' + e.name.content).join(', ') +
-        ')' +
-        '{';
+        "(" +
+        thmNode.params
+          .map((e) => e.type.content + " " + e.name.content)
+          .join(", ") +
+        ")" +
+        "{";
       if (thmNode.diffs.length > 0) {
-        s3 += '\n' + thmNode.diffs.map((e) => '  diff ' + e.map((t) => t.content).join(' ')).join('\n');
+        s3 +=
+          "\n" +
+          thmNode.diffs
+            .map((e) => "  diff " + e.map((t) => t.content).join(" "))
+            .join("\n");
       }
       if (thmNode.assumptions.length > 0) {
-        s3 += '\n' + thmNode.assumptions.map((e) => '  -| ' + opAstNodeToString(e)).join('\n');
+        s3 +=
+          "\n" +
+          thmNode.assumptions
+            .map((e) => "  -| " + opAstNodeToString(e))
+            .join("\n");
       }
-      s3 += '\n' + thmNode.targets.map((e) => '  |- ' + opAstNodeToString(e)).join('\n') + '\n}' + ' = {\n';
-      s3 += thmNode.proof.map((e) => '  ' + opAstNodeToString(e)).join('\n') + '\n}';
+      s3 +=
+        "\n" +
+        thmNode.targets.map((e) => "  |- " + opAstNodeToString(e)).join("\n") +
+        "\n}" +
+        " = {\n";
+      s3 +=
+        thmNode.proof.map((e) => "  " + opAstNodeToString(e)).join("\n") +
+        "\n}";
       return s3;
     default:
-      return '';
+      return "";
   }
 }
 
 function opAstNodeToString(opNode: OpAstNode) {
   let s = opNode.root.content;
   if (opNode.children.length > 0) {
-    s += '(' + opNode.children.map((e) => opAstNodeToString(e)).join(', ') + ')';
+    s +=
+      "(" + opNode.children.map((e) => opAstNodeToString(e)).join(", ") + ")";
   }
   return s;
 }
@@ -188,17 +227,17 @@ export enum ErrorTypes {
   RightParenMissing,
   ParamTypeMissing,
   ParamNameMissing,
-  ParamCommaMissing,
   LeftBraceMissing,
   RightBraceMissing,
   BodyKeywordMissing,
-  OpAstRootMissing,
   EmptyBodyStmt,
+  EmptyTargetBodyStmt,
+  EmptyAssumeBodyStmt,
+  EmptyDiffBodyStmt,
   DupDiff,
   SingleDiff,
   DiffNotWord,
   TargetMissing,
-  ProofEqMissing,
   // ProofEmpty, empty proof 继续进入compile阶段，被当成axiom
   // compile error
   DupDefType,
@@ -269,6 +308,7 @@ export interface ThmCNode extends CNode {
   isValid: Boolean;
   suggestions: Map<string, TermOpCNode>[][];
   suggestionProof: ProofOpCNode[][];
+  cNodeSuggestions?: Suggestion[];
 }
 
 export interface TermOpCNode {
@@ -294,74 +334,139 @@ export interface ProofOpCNode {
   diffError?: string[];
 }
 
-export const CONTENT_FILE = 'content.follow.json';
+export const CONTENT_FILE = "content.follow.json";
 
 export function getFollowErrorMsg(errorType: ErrorTypes): string {
   switch (errorType) {
     case ErrorTypes.TypeMissing:
-      return 'TypeMissing';
+      return "类型缺失";
     case ErrorTypes.NameMissing:
-      return 'NameMissing';
+      return "名称缺失";
     case ErrorTypes.LeftParenMissing:
-      return 'LeftParenMissing';
+      return "左括号'('缺失";
     case ErrorTypes.RightParenMissing:
-      return 'RightParenMissing';
+      return "右括号')'缺失";
     case ErrorTypes.ParamTypeMissing:
-      return 'ParamTypeMissing';
+      return "变量类型缺失";
     case ErrorTypes.ParamNameMissing:
-      return 'ParamNameMissing';
-    case ErrorTypes.ParamCommaMissing:
-      return 'ParamCommaMissing';
+      return "变量名称缺失";
     case ErrorTypes.LeftBraceMissing:
-      return 'LeftBraceMissing';
+      return "左大括号'{'缺失";
     case ErrorTypes.RightBraceMissing:
-      return 'RightBraceMissing';
+      return "右大括号'}'缺失";
     case ErrorTypes.BodyKeywordMissing:
-      return 'BodyKeywordMissing';
-    case ErrorTypes.OpAstRootMissing:
-      return 'OpAstRootMissing';
+      return "缺失关键词'|-'，'-|'，或者'diff'";
     case ErrorTypes.EmptyBodyStmt:
-      return 'EmptyBodyStmt';
+      return "空语句";
+    case ErrorTypes.EmptyTargetBodyStmt:
+      return "空target，`|- <term1> <term2> <term3>`";
+    case ErrorTypes.EmptyAssumeBodyStmt:
+      return "空assumption，`-| <term1> <term2> <term3>`";
+    case ErrorTypes.EmptyDiffBodyStmt:
+      return "空diff，`diff (x, y, z) (A, B, C) ...`";
     case ErrorTypes.DupDiff:
-      return 'DupDiff';
+      return "diff不能接受两个相同的符号";
     case ErrorTypes.SingleDiff:
-      return 'SingleDiff';
+      return "diff需要至少2个符号";
     case ErrorTypes.DiffNotWord:
-      return 'DiffNotWord';
+      return "diff只接受argument符号";
     case ErrorTypes.TargetMissing:
-      return 'TargetMissing';
-    case ErrorTypes.ProofEqMissing:
-      return 'ProofEqMissing';
+      return "target缺失";
     case ErrorTypes.DupDefType:
-      return 'DupDefType';
+      return "类型重复定义";
     case ErrorTypes.TypeDefMissing:
-      return 'TypeDefMissing';
+      return "类型未定义";
     case ErrorTypes.NotType:
-      return 'NotType';
+      return "不是类型";
     case ErrorTypes.DupName:
-      return 'DupName';
+      return "名字重复";
     case ErrorTypes.DupArgName:
-      return 'DupArgName';
+      return "参数名字重复";
     case ErrorTypes.DiffIsKeyword:
-      return 'DiffIsKeyword';
+      return "diff是一个关键字";
     case ErrorTypes.DiffIsNotArg:
-      return 'DiffIsNotArg';
+      return "diff只接受argument符号";
     case ErrorTypes.TermDefMissing:
-      return 'TermDefMissing';
+      return "term定义缺失";
     case ErrorTypes.TooManyArg:
-      return 'TooManyArg';
+      return "参数太多";
     case ErrorTypes.TooLessArg:
-      return 'TooLessArg';
+      return "参数太少";
     case ErrorTypes.ArgTypeError:
-      return 'ArgTypeError';
+      return "参数类型错误";
     case ErrorTypes.AxiomThmDefMissing:
-      return 'AxiomThmDefMissing';
+      return "使用未定义的axiom/thm";
     case ErrorTypes.ProofDiffError:
-      return 'ProofDiffError';
+      return "违反了所使用的axiom/thm的diff条件";
     case ErrorTypes.ProofOpUseless:
-      return 'ProofOpUseless';
+      return "无用的证明语句";
     case ErrorTypes.ThmWithoutValidProof:
-      return 'ThmWithoutValidProof';
+      return "thm未证明";
   }
-  return '';
+  return "";
+}
+
+export type Suggestion = {
+  range: Range;
+  newText: string;
+  doc: string;
+};
+
+export interface CompileInfo {
+  cNodes: CNode[];
+  errors: Error[];
+  tokens: Token[];
+  suggestions: Suggestion[];
+}
+
+export function cNodeToString(cNode: CNode): string {
+  switch (cNode.cnodetype) {
+    case CNodeTypes.TYPE:
+      const typeNode = cNode as TypeCNode;
+      return `type ${typeNode.astNode.types.map((t) => t.content)}`;
+    case CNodeTypes.TERM:
+      const termNode = cNode as TermCNode;
+      return [
+        "term",
+        termNode.astNode.name.content,
+        "(",
+
+        termNode.astNode.params
+          .map((param) => param.type.content + " " + param.name.content)
+          .join(", "),
+        ")",
+        "{",
+        termNode.astNode.content.map((c) => c.content).join(),
+        "}",
+      ].join(" ");
+    case CNodeTypes.AXIOM:
+      const axiomNode = cNode as AxiomCNode;
+      return [
+        `axiom ${axiomNode.astNode.name.content}(${axiomNode.astNode.params
+          .map((param) => param.type.content + " " + param.name.content)
+          .join(", ")}) {`,
+        ...axiomNode.targets.map((t) => "|- " + t.termContent),
+        ...axiomNode.assumptions.map((a) => "-| " + a.termContent),
+        "diff " +
+          axiomNode.diffArray
+            .map((group) => "(" + group.join(",") + ")")
+            .join(" "),
+        "}",
+      ].join("\n");
+    case CNodeTypes.THM:
+      const thmNode = cNode as ThmCNode;
+      return [
+        `thm ${thmNode.astNode.name.content}(${thmNode.astNode.params
+          .map((param) => param.type.content + " " + param.name.content)
+          .join(", ")}) {`,
+        ...thmNode.targets.map((t) => "|- " + t.termContent),
+        ...thmNode.assumptions.map((a) => "-| " + a.termContent),
+        "diff " +
+          thmNode.diffArray
+            .map((group) => "(" + group.join(",") + ")")
+            .join(" "),
+        "}",
+      ].join("\n");
+  }
+  return "";
 }

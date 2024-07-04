@@ -33,12 +33,12 @@ export class Scanner {
   private idx: number;
 
   constructor() {
-    this.position = new PositionImpl(0, 0);
+    this.position = new PositionImpl(0, 0, 0);
     this.text = "";
     this.idx = 0;
   }
   private reset(text: string) {
-    this.position = new PositionImpl(0, 0);
+    this.position = new PositionImpl(0, 0, 0);
     this.text = text;
     this.idx = 0;
   }
@@ -80,10 +80,10 @@ export class Scanner {
   }
 
   private isIgnore(code: number): boolean {
-    if(
-        isWhitespace(code) ||
-        isNewLine(code) ||
-        code === charCodes.carriageReturn
+    if (
+      isWhitespace(code) ||
+      isNewLine(code) ||
+      code === charCodes.carriageReturn
     ) {
       return true;
     }
@@ -107,11 +107,7 @@ export class Scanner {
     const content = this.text.slice(startIdx, this.idx);
     const range = new RangeImpl(startPosition, endPosition);
 
-    const token = new TokenImpl(
-      TokenTypes.IGNORE,
-      content,
-      range
-    );
+    const token = new TokenImpl(TokenTypes.IGNORE, content, range);
     return token;
   }
 
@@ -243,14 +239,16 @@ export class Scanner {
 export class PositionImpl implements Position {
   line: number;
   character: number;
+  offset: number;
 
-  constructor(line: number, character: number) {
+  constructor(line: number, character: number, offset: number) {
     this.line = line;
     this.character = character;
+    this.offset = offset;
   }
 
   public clone() {
-    return new PositionImpl(this.line, this.character);
+    return new PositionImpl(this.line, this.character, this.offset);
   }
 
   public next(code: number) {
@@ -260,10 +258,11 @@ export class PositionImpl implements Position {
     } else {
       this.character += 1;
     }
+    this.offset += 1;
   }
 
   public toString() {
-    return `(${this.line}, ${this.character})`;
+    return `(${this.line}, ${this.character}, ${this.offset})`;
   }
 }
 
