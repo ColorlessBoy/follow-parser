@@ -426,47 +426,84 @@ export function cNodeToString(cNode: CNode): string {
       return `type ${typeNode.astNode.types.map((t) => t.content)}`;
     case CNodeTypes.TERM:
       const termNode = cNode as TermCNode;
+      if (termNode.astNode.params.length > 0) {
+        return [
+          "term",
+          termNode.astNode.name.content,
+          "(",
+          termNode.astNode.params
+            .map((param) => param.type.content + " " + param.name.content)
+            .join(", "),
+          ")",
+          "{",
+          termNode.astNode.content.map((c) => c.content).join(""),
+          "}",
+        ].join(" ");
+      }
       return [
         "term",
         termNode.astNode.name.content,
-        "(",
-
-        termNode.astNode.params
-          .map((param) => param.type.content + " " + param.name.content)
-          .join(", "),
-        ")",
         "{",
-        termNode.astNode.content.map((c) => c.content).join(),
+        termNode.astNode.content.map((c) => c.content).join(""),
         "}",
       ].join(" ");
+
     case CNodeTypes.AXIOM:
       const axiomNode = cNode as AxiomCNode;
+      if (axiomNode.diffArray.length > 0) {
+        return [
+          `axiom ${axiomNode.astNode.name.content}(${axiomNode.astNode.params
+            .map((param) => param.type.content + " " + param.name.content)
+            .join(", ")}) {`,
+          ...axiomNode.targets.map((t) => "|- " + t.termContent),
+          ...axiomNode.assumptions.map((a) => "-| " + a.termContent),
+          "diff " +
+            axiomNode.diffArray
+              .map((group) => "(" + group.join(",") + ")")
+              .join(" "),
+          "}",
+        ].join("\n");
+      }
       return [
         `axiom ${axiomNode.astNode.name.content}(${axiomNode.astNode.params
           .map((param) => param.type.content + " " + param.name.content)
           .join(", ")}) {`,
         ...axiomNode.targets.map((t) => "|- " + t.termContent),
         ...axiomNode.assumptions.map((a) => "-| " + a.termContent),
-        "diff " +
-          axiomNode.diffArray
-            .map((group) => "(" + group.join(",") + ")")
-            .join(" "),
         "}",
       ].join("\n");
     case CNodeTypes.THM:
       const thmNode = cNode as ThmCNode;
+      if (thmNode.diffArray.length > 0) {
+        return [
+          `thm ${thmNode.astNode.name.content}(${thmNode.astNode.params
+            .map((param) => param.type.content + " " + param.name.content)
+            .join(", ")}) {`,
+          ...thmNode.targets.map((t) => "|- " + t.termContent),
+          ...thmNode.assumptions.map((a) => "-| " + a.termContent),
+          "diff " +
+            thmNode.diffArray
+              .map((group) => "(" + group.join(",") + ")")
+              .join(" "),
+          "}",
+        ].join("\n");
+      }
       return [
         `thm ${thmNode.astNode.name.content}(${thmNode.astNode.params
           .map((param) => param.type.content + " " + param.name.content)
           .join(", ")}) {`,
         ...thmNode.targets.map((t) => "|- " + t.termContent),
         ...thmNode.assumptions.map((a) => "-| " + a.termContent),
-        "diff " +
-          thmNode.diffArray
-            .map((group) => "(" + group.join(",") + ")")
-            .join(" "),
         "}",
       ].join("\n");
   }
   return "";
 }
+
+export type CNodeInfo = {
+  noteId: string;
+  blockId: string;
+  type: string;
+  name: string;
+  content: string;
+};

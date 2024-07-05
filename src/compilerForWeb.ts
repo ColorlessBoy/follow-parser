@@ -1,5 +1,15 @@
 import { Compiler } from "./compiler";
-import { CNode, CNodeTypes, CompileInfo } from "./types";
+import {
+  AxiomCNode,
+  CNode,
+  cNodeToString,
+  CNodeTypes,
+  CNodeInfo,
+  CompileInfo,
+  TermCNode,
+  ThmCNode,
+  TypeCNode,
+} from "./types";
 
 type NoteId = string;
 type BlockId = string;
@@ -50,6 +60,70 @@ export class CompilerForWeb {
   }
   public getCNodes(noteId: string, blockId: string) {
     return this.compilerMap.get(noteId)?.get(blockId)?.cNodeList || [];
+  }
+  public getAllOfCNodes() {
+    const result: CNodeInfo[] = [];
+    for (const noteId of this.noteIdList) {
+      this.blockIdListMap.get(noteId)?.forEach((blockId) => {
+        const cNodes = this.getCNodes(noteId, blockId);
+        cNodes.forEach((cNode) => {
+          const infos = this.getCNodeInfo(noteId, blockId, cNode);
+          result.push(...infos);
+        });
+      });
+    }
+    return result;
+  }
+  private getCNodeInfo(
+    noteId: string,
+    blockId: string,
+    cNode: CNode
+  ): CNodeInfo[] {
+    switch (cNode.cnodetype) {
+      case CNodeTypes.TYPE:
+        const typeNode = cNode as TypeCNode;
+        const typeInfos = typeNode.astNode.types.map((t) => {
+          return {
+            noteId: noteId,
+            blockId: blockId,
+            type: "type",
+            name: t.content,
+            content: `type ${t.content}`,
+          };
+        });
+        return typeInfos;
+      case CNodeTypes.TERM:
+        const termNode = cNode as TermCNode;
+        const termInfo = {
+          noteId: noteId,
+          blockId: blockId,
+          type: "term",
+          name: termNode.astNode.name.content,
+          content: cNodeToString(cNode),
+        };
+        return [termInfo];
+      case CNodeTypes.AXIOM:
+        const axiomNode = cNode as AxiomCNode;
+        const axiomInfo = {
+          noteId: noteId,
+          blockId: blockId,
+          type: "axiom",
+          name: axiomNode.astNode.name.content,
+          content: cNodeToString(cNode),
+        };
+        return [axiomInfo];
+      case CNodeTypes.THM:
+        const thmNode = cNode as ThmCNode;
+        const thmInfo = {
+          noteId: noteId,
+          blockId: blockId,
+          type: "thm",
+          name: thmNode.astNode.name.content,
+          content: cNodeToString(cNode),
+        };
+        return [thmInfo];
+    }
+    return [];
   }
   private axiomThmSearchGenerator(
     noteId: string,
