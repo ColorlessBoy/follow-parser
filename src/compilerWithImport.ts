@@ -494,7 +494,10 @@ export class CompilerWithImport {
     }
     if (proofSomething) {
       // 新的targets放在最前面体验更好
-      const newTargets = proof.assumptions.filter((assumption) => !assumptionSet.has(assumption.funContent));
+      const nextTargetSet = new Set(nextTargets.map((e) => e.funContent));
+      const newTargets = proof.assumptions.filter(
+        (assumption) => !assumptionSet.has(assumption.funContent) && !nextTargetSet.has(assumption.funContent),
+      );
       nextTargets = [...newTargets, ...nextTargets];
     }
     return nextTargets;
