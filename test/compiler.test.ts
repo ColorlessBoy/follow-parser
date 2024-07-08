@@ -118,7 +118,7 @@ thm a2i(prop p1, prop p2, prop p3) {
     const compiler = new Compiler();
     compiler.compileCode(text);
     expect(compiler.cNodeList.length).toBe(5);
-    expect(compiler.errors.length).toBe(1);
+    expect(compiler.errors.length).toBe(3);
     expect((compiler.cNodeList[4] as ThmCNode).suggestions.length).toBe(2);
     expect((compiler.cNodeList[4] as ThmCNode).suggestions[1].length).toBe(1);
   });
@@ -154,7 +154,7 @@ thm a2i(prop p1, prop p2, prop p3) {
     compiler.compileCode('text2', text2);
 
     expect(compiler.currentCNodeList.length).toBe(1);
-    expect(compiler.errors.length).toBe(1);
+    expect(compiler.errors.length).toBe(3);
     expect((compiler.currentCNodeList[0] as ThmCNode).suggestions.length).toBe(2);
     expect((compiler.currentCNodeList[0] as ThmCNode).suggestions[1].length).toBe(1);
   });
@@ -190,7 +190,7 @@ thm a2i(prop p1, prop p2, prop p3) {
     compiler.compileCode('text2', text2);
 
     expect(compiler.compilerMap.size).toBe(2);
-    expect(compiler.getErrors('text2').length).toBe(1);
+    expect(compiler.getErrors('text2').length).toBe(3);
     expect((compiler.getCNodes('text2')[0] as ThmCNode).suggestions.length).toBe(2);
     expect((compiler.getCNodes('text2')[0] as ThmCNode).suggestions[1].length).toBe(1);
   });

@@ -1,5 +1,5 @@
-import { Parser } from './parser';
-import { Scanner } from './scanner';
+import { Parser } from "./parser";
+import { RangeImpl, Scanner } from "./scanner";
 import {
   ASTNode,
   AxiomASTNode,
@@ -24,7 +24,8 @@ import {
   TokenTypes,
   Suggestion,
   cNodeToString,
-} from './types';
+  TextEdit,
+} from "./types";
 
 export class CompilerWithImport {
   public cNodeListMap: Map<string, CNode[]> = new Map();
@@ -35,7 +36,11 @@ export class CompilerWithImport {
   public currentCNodeList: CNode[] = [];
   public currentCNodeMap: Map<string, CNode> = new Map();
   public currentDeps: string[] = [];
-  public currentFile: string = '';
+  public currentFile: string = "";
+  private virtualIndex = 0;
+  private virtualMap: Map<string, TermOpCNode> = new Map();
+  private virtualUsedMap: Map<string, TermOpCNode[]> = new Map();
+
   public setImportList(importList: string[]) {
     this.depFileList = importList;
   }
@@ -50,7 +55,9 @@ export class CompilerWithImport {
     errors.sort((a, b) => {
       if (a.token.range.start.line != b.token.range.start.line) {
         return a.token.range.start.line - b.token.range.start.line;
-      } else if (a.token.range.start.character != b.token.range.start.character) {
+      } else if (
+        a.token.range.start.character != b.token.range.start.character
+      ) {
         return a.token.range.start.character - b.token.range.start.character;
       } else if (a.token.range.end.line != b.token.range.start.line) {
         return a.token.range.end.line - b.token.range.end.line;
@@ -141,7 +148,7 @@ export class CompilerWithImport {
         const last = content.pop();
         if (last === undefined) {
           content.push(token.content);
-        } else if (typeof last === 'string') {
+        } else if (typeof last === "string") {
           content.push(last + token.content);
         } else {
           content.push(last, token.content);
@@ -170,7 +177,7 @@ export class CompilerWithImport {
 
     const targets: TermOpCNode[] = [];
     for (const t of node.targets) {
-      const ct = this.compileTermOpNode(t, argDefMap);
+      const ct = this.compileTermOpNode0(t, argDefMap);
       if (ct === undefined) {
         // Parsing opNode failed.
         return;
@@ -180,7 +187,7 @@ export class CompilerWithImport {
     }
     const assumptions: TermOpCNode[] = [];
     for (const a of node.assumptions) {
-      const ca = this.compileTermOpNode(a, argDefMap);
+      const ca = this.compileTermOpNode0(a, argDefMap);
       if (ca === undefined) {
         // Parsing opNode failed.
         return;
@@ -241,7 +248,7 @@ export class CompilerWithImport {
 
     const targets: TermOpCNode[] = [];
     for (const t of node.targets) {
-      const ct = this.compileTermOpNode(t, argDefMap);
+      const ct = this.compileTermOpNode0(t, argDefMap);
       if (ct === undefined) {
         // Parsing opNode failed.
         return;
@@ -251,7 +258,7 @@ export class CompilerWithImport {
     }
     const assumptions: TermOpCNode[] = [];
     for (const a of node.assumptions) {
-      const ca = this.compileTermOpNode(a, argDefMap);
+      const ca = this.compileTermOpNode0(a, argDefMap);
       if (ca === undefined) {
         // Parsing opNode failed.
         return;
@@ -259,6 +266,10 @@ export class CompilerWithImport {
         assumptions.push(ca);
       }
     }
+
+    this.virtualIndex = 0;
+    this.virtualMap = new Map();
+    this.virtualUsedMap = new Map();
 
     const proofs: ProofOpCNode[] = [];
     const diffMap = this.getDiffMap(node.diffs);
@@ -276,7 +287,7 @@ export class CompilerWithImport {
       proofs,
       assumptions,
       argDefMap,
-      diffMap,
+      diffMap
     );
     const thmCNode: ThmCNode = {
       cnodetype: CNodeTypes.THM,
@@ -315,16 +326,22 @@ export class CompilerWithImport {
     proofs: ProofOpCNode[],
     assumptions: TermOpCNode[],
     blockArgDefMap: Map<string, ParamPair>,
-    targetDiffMap: Map<string, Set<string>>,
+    targetDiffMap: Map<string, Set<string>>
   ) {
     const processes: TermOpCNode[][] = [];
     const suggestions: Map<string, TermOpCNode>[][] = [];
-    const assumptionSet: Set<string> = new Set(assumptions.map((ass) => ass.funContent));
+    const assumptionSet: Set<string> = new Set(
+      assumptions.map((ass) => ass.funContent)
+    );
     const suggestionProof: ProofOpCNode[][] = [];
     let currentTarget = [...targets];
     for (const proof of proofs) {
       // check target
-      const nextTarget = this.getNextProof0(currentTarget, proof, assumptionSet);
+      const nextTarget = this.getNextProof0(
+        currentTarget,
+        proof,
+        assumptionSet
+      );
       if (nextTarget === undefined) {
         this.errors.push({
           type: ErrorTypes.ProofOpUseless,
@@ -333,10 +350,53 @@ export class CompilerWithImport {
         processes.push(currentTarget);
         const suggestion = this.getSuggestions(currentTarget, proof);
         suggestions.push(suggestion);
+        const result = suggestion.map((m) => {
+          const proofOpCNode = this.replaceProofCNode(
+            proof,
+            m,
+            blockArgDefMap,
+            targetDiffMap
+          );
+          const virtualEdits: TextEdit[] = [];
+          this.virtualMap.forEach((value, key) => {
+            if (value.range.end.line < proofOpCNode.range.start.line) {
+              const virtualTarget = m.get(key);
+              if (
+                virtualTarget &&
+                virtualTarget.funContent !== value.funContent
+              ) {
+                virtualEdits.push({
+                  range: value.range,
+                  newText: virtualTarget.funContent,
+                });
+                this.virtualUsedMap.get(key)?.forEach((cNode) => {
+                  virtualEdits.push({
+                    range: cNode.range,
+                    newText: value.funContent,
+                  });
+                });
+              }
+            }
+          });
+          proofOpCNode.virtualEdit = virtualEdits;
+          return proofOpCNode;
+        });
+        // 过滤掉没有改变的suggestion
         suggestionProof.push(
-          suggestion.map((m) => {
-            return this.replaceProofCNode(proof, m, blockArgDefMap, targetDiffMap);
-          }),
+          result.filter((newProofOp) => {
+            if (newProofOp.virtualEdit && newProofOp.virtualEdit.length > 0) {
+              return true;
+            }
+            console.log({ proof, newProofOp });
+            for (let i = 0; i < newProofOp.children.length; i++) {
+              const child = proof.children[i];
+              const newChild = newProofOp.children[i];
+              if (child.funContent !== newChild.funContent) {
+                return true;
+              }
+            }
+            return false;
+          })
         );
       } else {
         processes.push(nextTarget);
@@ -344,7 +404,14 @@ export class CompilerWithImport {
         if (proof.useVirtual) {
           const suggestion = this.getSuggestion2(proof);
           suggestions.push([suggestion]);
-          suggestionProof.push([this.replaceProofCNode(proof, suggestion, blockArgDefMap, targetDiffMap)]);
+          suggestionProof.push([
+            this.replaceProofCNode(
+              proof,
+              suggestion,
+              blockArgDefMap,
+              targetDiffMap
+            ),
+          ]);
         } else {
           suggestions.push([]);
           suggestionProof.push([]);
@@ -357,7 +424,7 @@ export class CompilerWithImport {
     root: Token,
     targetDiffMap: Map<string, Set<string>>,
     newDiffMap: Map<string, Set<string>>,
-    blockArgSet: Set<string>,
+    blockArgSet: Set<string>
   ) {
     if (newDiffMap.size === 0) {
       return [];
@@ -375,7 +442,6 @@ export class CompilerWithImport {
         continue;
       }
       const bodyDiff = targetDiffMap.get(item[0]);
-      console.log('hello');
       for (const v of item[1]) {
         if (!blockArgSet.has(v)) {
           continue;
@@ -395,7 +461,7 @@ export class CompilerWithImport {
   private checkDiffCondition0(
     targetDiffMap: Map<string, Set<string>>,
     newDiffMap: Map<string, Set<string>>,
-    blockArgSet: Set<string>,
+    blockArgSet: Set<string>
   ) {
     if (newDiffMap.size === 0) {
       return [];
@@ -431,7 +497,10 @@ export class CompilerWithImport {
     }
     return suggestions;
   }
-  private getSuggestions(targets: TermOpCNode[], proof: ProofOpCNode): Map<string, TermOpCNode>[] {
+  private getSuggestions(
+    targets: TermOpCNode[],
+    proof: ProofOpCNode
+  ): Map<string, TermOpCNode>[] {
     const suggestions: Map<string, TermOpCNode>[] = [];
     // suggestion 的顺序和target的顺序相同体验更好
     for (const target of targets) {
@@ -444,9 +513,13 @@ export class CompilerWithImport {
     }
     return suggestions;
   }
-  private matchTermOpCNode(current: TermOpCNode, target: TermOpCNode): Map<string, TermOpCNode> | undefined {
+  private matchTermOpCNode(
+    current: TermOpCNode,
+    target: TermOpCNode
+  ): Map<string, TermOpCNode> | undefined {
     const pairStack: [TermOpCNode, TermOpCNode][] = [[current, target]];
     const suggestArgMap: Map<string, TermOpCNode> = new Map();
+    const tArgMap: Map<string, TermOpCNode> = new Map();
     while (pairStack.length > 0) {
       const top = pairStack.shift();
       if (top === undefined) {
@@ -460,6 +533,12 @@ export class CompilerWithImport {
           return undefined;
         }
         suggestArgMap.set(cCNode.root.content, tCNode);
+      } else if (tCNode.virtual === true) {
+        const preTCNode = tArgMap.get(tCNode.funContent);
+        if (preTCNode && preTCNode.funContent !== tCNode.funContent) {
+          return undefined;
+        }
+        tArgMap.set(tCNode.funContent, cCNode);
       } else if (cCNode.root.content !== tCNode.root.content) {
         return undefined;
       } else {
@@ -470,12 +549,18 @@ export class CompilerWithImport {
         }
       }
     }
-    return suggestArgMap;
+    for (const key of tArgMap.keys()) {
+      const value = tArgMap.get(key);
+      if (value) {
+        tArgMap.set(key, this.replaceTermOpCNode(value, suggestArgMap));
+      }
+    }
+    return new Map([...suggestArgMap, ...tArgMap]);
   }
   private getNextProof0(
     targets: TermOpCNode[],
     proof: ProofOpCNode,
-    assumptionSet: Set<string>,
+    assumptionSet: Set<string>
   ): TermOpCNode[] | undefined {
     const proofTargetSet = new Set(proof.targets.map((e) => e.funContent));
     let nextTargets: TermOpCNode[] = [];
@@ -496,7 +581,9 @@ export class CompilerWithImport {
       // 新的targets放在最前面体验更好
       const nextTargetSet = new Set(nextTargets.map((e) => e.funContent));
       const newTargets = proof.assumptions.filter(
-        (assumption) => !assumptionSet.has(assumption.funContent) && !nextTargetSet.has(assumption.funContent),
+        (assumption) =>
+          !assumptionSet.has(assumption.funContent) &&
+          !nextTargetSet.has(assumption.funContent)
       );
       nextTargets = [...newTargets, ...nextTargets];
     }
@@ -519,7 +606,10 @@ export class CompilerWithImport {
     const suggestions: Suggestion[] = [];
     if (token.content.length >= 3) {
       for (const cNode of this.currentCNodeList) {
-        if (cNode.cnodetype === CNodeTypes.AXIOM || cNode.cnodetype === CNodeTypes.THM) {
+        if (
+          cNode.cnodetype === CNodeTypes.AXIOM ||
+          cNode.cnodetype === CNodeTypes.THM
+        ) {
           const cNode2 = cNode as ThmCNode | AxiomCNode;
           if (cNode2.astNode.name.content.startsWith(token.content)) {
             const tmp: Suggestion = {
@@ -535,7 +625,10 @@ export class CompilerWithImport {
         const cNodeList = this.cNodeListMap.get(dep);
         if (cNodeList) {
           for (const cNode of cNodeList) {
-            if (cNode.cnodetype === CNodeTypes.AXIOM || cNode.cnodetype === CNodeTypes.THM) {
+            if (
+              cNode.cnodetype === CNodeTypes.AXIOM ||
+              cNode.cnodetype === CNodeTypes.THM
+            ) {
               const cNode2 = cNode as ThmCNode | AxiomCNode;
               if (cNode2.astNode.name.content.startsWith(token.content)) {
                 const tmp: Suggestion = {
@@ -555,13 +648,14 @@ export class CompilerWithImport {
   private compileProofOpNode(
     opNode: OpAstNode,
     blockArgDefMap: Map<string, ParamPair>,
-    targetDiffMap: Map<string, Set<string>>,
+    targetDiffMap: Map<string, Set<string>>
   ): ProofOpCNode | undefined {
     const root = opNode.root;
     const definition = this.getDefinition(root.content);
     if (
       definition === undefined ||
-      (definition.cnodetype !== CNodeTypes.AXIOM && definition.cnodetype !== CNodeTypes.THM)
+      (definition.cnodetype !== CNodeTypes.AXIOM &&
+        definition.cnodetype !== CNodeTypes.THM)
     ) {
       this.errors.push({
         type: ErrorTypes.AxiomThmDefMissing,
@@ -590,29 +684,26 @@ export class CompilerWithImport {
       root.type = TokenTypes.THMNAME;
     }
 
-    const children: (TermOpCNode | undefined)[] = opNode.children.map((c) => this.compileTermOpNode(c, blockArgDefMap));
+    const children: TermOpCNode[] = [];
     const argMap: Map<string, TermOpCNode> = new Map();
     let useVirtual = false;
     for (let idx = 0; idx < wantArgs.length; idx++) {
-      const opCNode = children.at(idx);
       const wantArg = wantArgs[idx];
-      if (opCNode === undefined || opCNode.type !== wantArg.type.content) {
-        if (opCNode && opCNode.type !== wantArg.type.content) {
-          this.errors.push({
-            type: ErrorTypes.ArgTypeError,
-            token: opCNode.root,
-          });
-        }
+      const childOpNode = opNode.children.at(idx);
+      if (childOpNode === undefined) {
+        const virtualName = this.getNextVirtual(wantArg.type.content);
         const virtualArg: TermOpCNode = {
-          root: wantArg.name,
+          root: { ...wantArg.name, content: virtualName },
           children: [],
-          range: wantArg.name.range,
+          range: new RangeImpl(root.range.end, root.range.end),
           definition: wantArg,
           type: wantArg.type.content,
-          termContent: wantArg.name.content,
-          funContent: wantArg.name.content,
+          termContent: virtualName,
+          funContent: virtualName,
           virtual: true,
         };
+        this.virtualMap.set(virtualArg.funContent, virtualArg);
+        this.virtualIndex += 1;
         argMap.set(wantArg.name.content, virtualArg);
         useVirtual = true;
         if (children.length > idx) {
@@ -621,16 +712,34 @@ export class CompilerWithImport {
           children.push(virtualArg);
         }
       } else {
-        argMap.set(wantArg.name.content, opCNode);
+        const childOpCNode = this.compileTermOpNode1(
+          childOpNode,
+          blockArgDefMap,
+          wantArg
+        );
+        children.push(childOpCNode);
+        if (childOpCNode.virtual) {
+          useVirtual = true;
+        }
+        argMap.set(wantArg.name.content, childOpCNode);
       }
     }
 
-    const targets = definition2.targets.map((e) => this.replaceTermOpCNode(e, argMap));
-    const assumptions = definition2.assumptions.map((e) => this.replaceTermOpCNode(e, argMap));
+    const targets = definition2.targets.map((e) =>
+      this.replaceTermOpCNode(e, argMap)
+    );
+    const assumptions = definition2.assumptions.map((e) =>
+      this.replaceTermOpCNode(e, argMap)
+    );
     const blockArgSet: Set<string> = new Set();
     blockArgDefMap.forEach((pair) => blockArgSet.add(pair.name.content));
     const diffs = this.replaceDiffs(definition2.diffArray, argMap);
-    const diffErrors = this.checkDiffCondition(root, targetDiffMap, diffs, blockArgSet);
+    const diffErrors = this.checkDiffCondition(
+      root,
+      targetDiffMap,
+      diffs,
+      blockArgSet
+    );
 
     const proofOpCNode: ProofOpCNode = {
       root: root,
@@ -645,7 +754,10 @@ export class CompilerWithImport {
     };
     return proofOpCNode;
   }
-  private replaceDiffs(diffs: string[][], argMap: Map<string, TermOpCNode>): Map<string, Set<string>> {
+  private replaceDiffs(
+    diffs: string[][],
+    argMap: Map<string, TermOpCNode>
+  ): Map<string, Set<string>> {
     if (diffs.length === 0) {
       return new Map();
     }
@@ -710,37 +822,34 @@ export class CompilerWithImport {
   }
   public replaceProofCNode(
     proof: ProofOpCNode,
-    argMap: Map<string, TermOpCNode>,
+    suggestion: Map<string, TermOpCNode>,
     blockArgDefMap: Map<string, ParamPair>,
-    targetDiffMap: Map<string, Set<string>>,
+    targetDiffMap: Map<string, Set<string>>
   ): ProofOpCNode {
     const definition = proof.definition as AxiomCNode | ThmCNode;
-    const astNode = definition.astNode as AxiomASTNode | ThmASTNode;
-    const params = astNode.params;
     const children = proof.children;
     const newChildren: TermOpCNode[] = [];
-    let count = 1;
-    for (let i = 0; i < params.length; i++) {
-      const argName = params[i].name.content;
+    for (let i = 0; i < children.length; i++) {
       const child = children[i];
-      const suggest = argMap.get(argName);
-      if (suggest) {
-        newChildren.push(suggest);
-      } else if (child.virtual === true) {
-        newChildren.push(child);
-        count += 1;
-      } else {
-        newChildren.push(child);
-      }
+      const newChild = this.replaceTermOpCNode(child, suggestion);
+      newChildren.push(newChild);
     }
 
-    const targets = definition.targets.map((e) => this.replaceTermOpCNode(e, argMap));
-    const assumptions = definition.assumptions.map((e) => this.replaceTermOpCNode(e, argMap));
-    const diffs = this.replaceDiffs(definition.diffArray, argMap);
+    const targets = proof.targets.map((e) =>
+      this.replaceTermOpCNode(e, suggestion)
+    );
+    const assumptions = proof.assumptions.map((e) =>
+      this.replaceTermOpCNode(e, suggestion)
+    );
+    const diffs = this.replaceDiffs2(proof.diffs, suggestion);
 
     const blockArgSet: Set<string> = new Set();
     blockArgDefMap.forEach((pair) => blockArgSet.add(pair.name.content));
-    const diffErrors = this.checkDiffCondition0(targetDiffMap, diffs, blockArgSet);
+    const diffErrors = this.checkDiffCondition0(
+      targetDiffMap,
+      diffs,
+      blockArgSet
+    );
 
     const newProof = {
       ...proof,
@@ -752,11 +861,14 @@ export class CompilerWithImport {
     };
     return newProof;
   }
-  private replaceTermOpCNode(cNode: TermOpCNode, argMap: Map<string, TermOpCNode>): TermOpCNode {
+  private replaceTermOpCNode(
+    cNode: TermOpCNode,
+    argMap: Map<string, TermOpCNode>
+  ): TermOpCNode {
     const root = cNode.root;
     const definition = cNode.definition;
 
-    const termOpCNode = argMap.get(root.content);
+    const termOpCNode = argMap.get(cNode.funContent);
     if (termOpCNode) {
       // argument
       return termOpCNode;
@@ -765,7 +877,9 @@ export class CompilerWithImport {
       return cNode;
     }
 
-    const children = cNode.children.map((e) => this.replaceTermOpCNode(e, argMap));
+    const children = cNode.children.map((e) =>
+      this.replaceTermOpCNode(e, argMap)
+    );
     const definition2 = definition as TermCNode;
     const opCNode: TermOpCNode = {
       root: root,
@@ -778,7 +892,251 @@ export class CompilerWithImport {
     };
     return opCNode;
   }
-  private compileTermOpNode(opNode: OpAstNode, argDefMap: Map<string, ParamPair>): TermOpCNode | undefined {
+  private getNextVirtual(content: string) {
+    while (this.virtualMap.has(`?${content}${this.virtualIndex}`)) {
+      this.virtualIndex += 1;
+    }
+    return `?${content}${this.virtualIndex}`;
+  }
+  public replaceDiffs2(
+    diffs: Map<string, Set<string>>,
+    argMap: Map<string, TermOpCNode>
+  ) {
+    if (diffs.size === 0) {
+      return new Map();
+    }
+    const argVars: Map<string, Set<string>> = new Map();
+    argMap.forEach((value, key) => {
+      const tmp = this.getLeavesOfTermOpCNode(value);
+      if (tmp.size > 0) {
+        argVars.set(key, tmp);
+      }
+    });
+    const rstMap: Map<string, Set<string>> = new Map();
+    diffs.forEach((value, key) => {
+      const seti = argVars.get(key);
+      if (seti) {
+        for (const v of value) {
+          const setj = argVars.get(v);
+          if (setj) {
+            for (const si of seti) {
+              for (const sj of setj) {
+                if (si <= sj) {
+                  let tmpSet = rstMap.get(si);
+                  if (tmpSet === undefined) {
+                    tmpSet = new Set();
+                    rstMap.set(si, tmpSet);
+                  }
+                  tmpSet.add(sj);
+                } else {
+                  let tmpSet = rstMap.get(sj);
+                  if (tmpSet === undefined) {
+                    tmpSet = new Set();
+                    rstMap.set(sj, tmpSet);
+                  }
+                  tmpSet.add(si);
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+    return rstMap;
+  }
+  private compileTermOpNode1(
+    opNode: OpAstNode,
+    argDefMap: Map<string, ParamPair>,
+    wantArg: ParamPair
+  ): TermOpCNode {
+    const root = opNode.root;
+    // arg
+    const argDef = argDefMap.get(root.content);
+    if (argDef !== undefined) {
+      root.type = TokenTypes.ARGNAME;
+      if (opNode.children.length > 0) {
+        this.errors.push({
+          type: ErrorTypes.TooManyArg,
+          token: root,
+        });
+      }
+      const opCNode: TermOpCNode = {
+        root: opNode.root,
+        children: [],
+        range: opNode.range,
+        definition: argDef,
+        type: argDef.type.content,
+        termContent: argDef.name.content,
+        funContent: argDef.name.content,
+      };
+      return opCNode;
+    }
+    // virtual
+    const virtual = this.virtualMap.get(root.content);
+    if (virtual) {
+      if (virtual.type === wantArg.type.content) {
+        if (opNode.children.length > 0) {
+          this.errors.push({
+            type: ErrorTypes.TooManyArg,
+            token: root,
+          });
+        }
+        const opCNode: TermOpCNode = {
+          root: root,
+          children: [],
+          range: opNode.range,
+          definition: virtual.definition,
+          type: virtual.type,
+          termContent: virtual.termContent,
+          funContent: virtual.funContent,
+        };
+        let virtualUsed = this.virtualUsedMap.get(virtual.funContent);
+        if (virtualUsed === undefined) {
+          virtualUsed = [opCNode];
+          this.virtualUsedMap.set(virtual.funContent, virtualUsed);
+        } else {
+          virtualUsed.push(opCNode);
+        }
+        return opCNode;
+      }
+    }
+    // term
+    const definition = this.getDefinition(root.content);
+    if (definition === undefined) {
+      this.errors.push({
+        type: ErrorTypes.TermDefMissing,
+        token: root,
+      });
+      const opCNode: TermOpCNode = {
+        root: root,
+        children: [],
+        range: opNode.range,
+        definition: wantArg,
+        type: wantArg.type.content,
+        termContent: root.content,
+        funContent: root.content,
+        virtual: true,
+      };
+      this.virtualMap.set(opCNode.funContent, opCNode);
+      this.virtualIndex += 1;
+      return opCNode;
+    } else if (definition.cnodetype !== CNodeTypes.TERM) {
+      this.errors.push({
+        type: ErrorTypes.TypeMissing,
+        token: root,
+      });
+      const virturalName = this.getNextVirtual(wantArg.type.content);
+      const opCNode: TermOpCNode = {
+        root: { ...root, content: virturalName },
+        children: [],
+        range: opNode.range,
+        definition: wantArg,
+        type: wantArg.type.content,
+        termContent: virturalName,
+        funContent: virturalName,
+        virtual: true,
+      };
+      this.virtualMap.set(opCNode.funContent, opCNode);
+      return opCNode;
+    }
+
+    const definition2 = definition as TermCNode;
+    if (definition2.astNode.type.content !== wantArg.type.content) {
+      this.errors.push({
+        type: ErrorTypes.TypeMissing,
+        token: root,
+      });
+      const virturalName = this.getNextVirtual(wantArg.type.content);
+      const opCNode: TermOpCNode = {
+        root: { ...root, content: virturalName },
+        children: [],
+        range: opNode.range,
+        definition: wantArg,
+        type: wantArg.type.content,
+        termContent: virturalName,
+        funContent: virturalName,
+        virtual: true,
+      };
+      this.virtualMap.set(opCNode.funContent, opCNode);
+      this.virtualIndex += 1;
+      return opCNode;
+    }
+    const wantArgs = definition2.astNode.params;
+    if (wantArgs.length !== opNode.children.length) {
+      if (wantArgs.length < opNode.children.length) {
+        this.errors.push({
+          type: ErrorTypes.TooManyArg,
+          token: root,
+        });
+      } else {
+        this.errors.push({
+          type: ErrorTypes.TooLessArg,
+          token: root,
+        });
+      }
+      const virturalName = this.getNextVirtual(wantArg.type.content);
+      const opCNode: TermOpCNode = {
+        root: { ...root, content: virturalName },
+        children: [],
+        range: opNode.range,
+        definition: wantArg,
+        type: wantArg.type.content,
+        termContent: virturalName,
+        funContent: virturalName,
+        virtual: true,
+      };
+      this.virtualMap.set(opCNode.funContent, opCNode);
+      this.virtualIndex += 1;
+      return opCNode;
+    }
+    if (wantArgs.length === 0) {
+      root.type = TokenTypes.CONSTNAME;
+    } else {
+      root.type = TokenTypes.TERMNAME;
+    }
+    const children = [];
+    let useVirutal = false;
+    for (let idx = 0; idx < wantArgs.length; idx++) {
+      const wantArg = wantArgs[idx];
+      const child = opNode.children.at(idx);
+      if (child === undefined) {
+        const virtualName = this.getNextVirtual(wantArg.type.content);
+        const virtualArg: TermOpCNode = {
+          root: { ...wantArg.name, content: virtualName },
+          children: [],
+          range: new RangeImpl(root.range.end, root.range.end),
+          definition: wantArg,
+          type: wantArg.type.content,
+          termContent: virtualName,
+          funContent: virtualName,
+          virtual: true,
+        };
+        this.virtualMap.set(virtualArg.funContent, virtualArg);
+        this.virtualIndex += 1;
+        useVirutal = true;
+        children.push(virtualArg);
+      } else {
+        const opCNode = this.compileTermOpNode1(child, argDefMap, wantArg);
+        children.push(opCNode);
+      }
+    }
+    const opCNode: TermOpCNode = {
+      root: root,
+      children: children as TermOpCNode[],
+      range: opNode.range,
+      definition: definition2,
+      type: definition2.astNode.type.content,
+      termContent: this.getTermContent(definition2, children as TermOpCNode[]),
+      funContent: this.getFunContent(definition2, children as TermOpCNode[]),
+      virtual: useVirutal,
+    };
+    return opCNode;
+  }
+
+  private compileTermOpNode0(
+    opNode: OpAstNode,
+    argDefMap: Map<string, ParamPair>
+  ): TermOpCNode | undefined {
     const root = opNode.root;
     // arg
     const argDef = argDefMap.get(root.content);
@@ -832,7 +1190,9 @@ export class CompilerWithImport {
     } else {
       root.type = TokenTypes.TERMNAME;
     }
-    const children: (TermOpCNode | undefined)[] = opNode.children.map((c) => this.compileTermOpNode(c, argDefMap));
+    const children: (TermOpCNode | undefined)[] = opNode.children.map((c) =>
+      this.compileTermOpNode0(c, argDefMap)
+    );
     for (let idx = 0; idx < children.length; idx++) {
       const opCNode = children[idx];
       const wantArg = wantArgs[idx];
@@ -856,10 +1216,10 @@ export class CompilerWithImport {
     return opCNode;
   }
   private getTermContent(term: TermCNode, children: TermOpCNode[]): string {
-    let s: string = '';
+    let s: string = "";
     for (let i = 0; i < term.content.length; i++) {
       const word = term.content[i];
-      if (typeof word === 'string') {
+      if (typeof word === "string") {
         s += word;
       } else {
         s += children[word].termContent;
@@ -870,7 +1230,7 @@ export class CompilerWithImport {
   private getFunContent(term: TermCNode, children: TermOpCNode[]): string {
     let s: string = term.astNode.name.content;
     if (children.length > 0) {
-      s += '(' + children.map((c) => c.funContent).join(',') + ')';
+      s += "(" + children.map((c) => c.funContent).join(",") + ")";
     }
     return s;
   }
