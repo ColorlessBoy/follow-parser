@@ -12,6 +12,9 @@ export interface TextEdit {
    * empty string.
    */
   newText: string;
+
+  oldText?: string;
+  newTermText?: string;
 }
 
 export interface Position {

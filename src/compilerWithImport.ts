@@ -352,11 +352,15 @@ export class CompilerWithImport {
                 virtualEdits.push({
                   range: value.range,
                   newText: virtualTarget.funContent,
+                  oldText: value.funContent,
+                  newTermText: virtualTarget.termContent,
                 });
                 this.virtualUsedMap.get(key)?.forEach((cNode) => {
                   virtualEdits.push({
                     range: cNode.range,
                     newText: virtualTarget.funContent,
+                    oldText: value.funContent,
+                    newTermText: virtualTarget.termContent,
                   });
                 });
               }
@@ -652,47 +656,6 @@ export class CompilerWithImport {
     return argMap;
   }
 
-  private matchTermOpCNode(current: TermOpCNode, target: TermOpCNode): Map<string, TermOpCNode> | undefined {
-    const pairStack: [TermOpCNode, TermOpCNode][] = [[current, target]];
-    const suggestArgMap: Map<string, TermOpCNode> = new Map();
-    const tArgMap: Map<string, TermOpCNode> = new Map();
-    while (pairStack.length > 0) {
-      const top = pairStack.shift();
-      if (top === undefined) {
-        break;
-      }
-      const cCNode = top[0];
-      const tCNode = top[1];
-      if (cCNode.virtual === true) {
-        const preCNode = suggestArgMap.get(cCNode.root.content);
-        if (preCNode && preCNode.funContent !== tCNode.funContent) {
-          return undefined;
-        }
-        suggestArgMap.set(cCNode.root.content, tCNode);
-      } else if (tCNode.virtual === true) {
-        const preTCNode = tArgMap.get(tCNode.funContent);
-        if (preTCNode && preTCNode.funContent !== tCNode.funContent) {
-          return undefined;
-        }
-        tArgMap.set(tCNode.funContent, cCNode);
-      } else if (cCNode.root.content !== tCNode.root.content) {
-        return undefined;
-      } else {
-        for (let i = 0; i < cCNode.children.length; i++) {
-          const nextCCNode = cCNode.children[i];
-          const nextTCNode = tCNode.children[i];
-          pairStack.push([nextCCNode, nextTCNode]);
-        }
-      }
-    }
-    for (const key of tArgMap.keys()) {
-      const value = tArgMap.get(key);
-      if (value) {
-        tArgMap.set(key, this.replaceTermOpCNode(value, suggestArgMap));
-      }
-    }
-    return new Map([...suggestArgMap, ...tArgMap]);
-  }
   private getNextProof0(
     targets: TermOpCNode[],
     proof: ProofOpCNode,
@@ -959,7 +922,6 @@ export class CompilerWithImport {
     blockArgDefMap: Map<string, ParamPair>,
     targetDiffMap: Map<string, Set<string>>,
   ): ProofOpCNode {
-    const definition = proof.definition as AxiomCNode | ThmCNode;
     const children = proof.children;
     const newChildren: TermOpCNode[] = [];
     for (let i = 0; i < children.length; i++) {
