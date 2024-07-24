@@ -525,19 +525,22 @@ export class Compiler {
         const suggestion = this.matchTermOpCNode1(current, target);
         if (suggestion) {
           tmpSuggestions.push(suggestion);
-        }
-        for (const current of proof.assumptions) {
-          for (const assumption of assumptions) {
-            // 尝试配对一个assumption
-            const suggestion2 = this.matchTermOpCNode1(current, assumption, suggestion);
-            if (suggestion2) {
-              tmpSuggestions.push(suggestion2);
+          for (const current of proof.assumptions) {
+            for (const assumption of assumptions) {
+              // 尝试配对一个assumption
+              const suggestion2 = this.matchTermOpCNode1(current, assumption, suggestion);
+              if (suggestion2 && suggestion2.size > suggestion.size) {
+                tmpSuggestions.push(suggestion2);
+              }
             }
           }
         }
       }
       tmpSuggestions.sort((a, b) => {
-        return this.getSuggestionVirtualCount(a) - this.getSuggestionVirtualCount(b);
+        if (a.size === b.size) {
+          return this.getSuggestionVirtualCount(a) - this.getSuggestionVirtualCount(b);
+        }
+        return b.size - a.size;
       });
       suggestions.push(...tmpSuggestions);
     }
