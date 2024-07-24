@@ -340,7 +340,7 @@ export class CompilerWithImport {
           token: proof.root,
         });
         processes.push(currentTarget);
-        const suggestion = this.getSuggestions(currentTarget, proof);
+        const suggestion = this.getSuggestions(currentTarget, proof, assumptions);
         suggestions.push(suggestion);
         const result = suggestion.map((m) => {
           const proofOpCNode = this.replaceProofCNode(proof, m, blockArgDefMap, targetDiffMap);
@@ -479,18 +479,45 @@ export class CompilerWithImport {
     return suggestions;
   }
 
-  private getSuggestions(targets: TermOpCNode[], proof: ProofOpCNode): Map<string, TermOpCNode>[] {
+  private getSuggestions(
+    targets: TermOpCNode[],
+    proof: ProofOpCNode,
+    assumptions: TermOpCNode[],
+  ): Map<string, TermOpCNode>[] {
     const suggestions: Map<string, TermOpCNode>[] = [];
     // suggestion 的顺序和target的顺序相同体验更好
     for (const target of targets) {
+      const tmpSuggestions: Map<string, TermOpCNode>[] = [];
       for (const current of proof.targets) {
         const suggestion = this.matchTermOpCNode1(current, target);
         if (suggestion) {
-          suggestions.push(suggestion);
+          tmpSuggestions.push(suggestion);
+        }
+        for (const current of proof.assumptions) {
+          for (const assumption of assumptions) {
+            // 尝试配对一个assumption
+            const suggestion2 = this.matchTermOpCNode1(current, assumption, suggestion);
+            if (suggestion2) {
+              tmpSuggestions.push(suggestion2);
+            }
+          }
         }
       }
+      tmpSuggestions.sort((a, b) => {
+        return this.getSuggestionVirtualCount(a) - this.getSuggestionVirtualCount(b);
+      });
+      suggestions.push(...tmpSuggestions);
     }
     return suggestions;
+  }
+  private getSuggestionVirtualCount(suggestion: Map<string, TermOpCNode>) {
+    let cnt = 0;
+    suggestion.forEach((value, _) => {
+      if (value.virtual === true) {
+        cnt += 1;
+      }
+    });
+    return cnt;
   }
   private isDep0(parent: string, child: string, dep: Map<string, Set<string>>) {
     const depChild = dep.get(parent);
@@ -613,8 +640,12 @@ export class CompilerWithImport {
       return preArgMap;
     }
   }
-  private matchTermOpCNode1(current: TermOpCNode, target: TermOpCNode): Map<string, TermOpCNode> | undefined {
-    const argMap: Map<string, TermOpCNode> = new Map();
+  private matchTermOpCNode1(
+    current: TermOpCNode,
+    target: TermOpCNode,
+    preArgMap?: Map<string, TermOpCNode>,
+  ): Map<string, TermOpCNode> | undefined {
+    const argMap: Map<string, TermOpCNode> = new Map(preArgMap);
     const eq: Set<string>[] = [];
     const dep: Map<string, Set<string>> = new Map();
     const tmp = this.checkTreeMatching(current, target, eq, dep, argMap);
